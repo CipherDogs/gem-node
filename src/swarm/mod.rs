@@ -7,6 +7,9 @@ use libp2p::{
 };
 use std::{error::Error, time::Duration};
 
+pub const BLOCK_TOPIC: &str = "block";
+pub const TRANSACTION_TOPIC: &str = "transaction";
+
 pub async fn init() -> Result<Swarm<Behaviour>, Box<dyn Error>> {
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = PeerId::from(local_key.public());
@@ -20,14 +23,12 @@ pub async fn init() -> Result<Swarm<Behaviour>, Box<dyn Error>> {
 
     let mut behaviour = Behaviour::new(local_key, local_peer_id).await?;
 
-    for ident_topic in [
-        gossipsub::IdentTopic::new("block"),
-        gossipsub::IdentTopic::new("transaction"),
-    ]
-    .iter()
-    {
-        behaviour.gossipsub.subscribe(ident_topic)?;
-    }
+    behaviour
+        .gossipsub
+        .subscribe(&gossipsub::IdentTopic::new(BLOCK_TOPIC))?;
+    behaviour
+        .gossipsub
+        .subscribe(&gossipsub::IdentTopic::new(TRANSACTION_TOPIC))?;
 
     Ok(Swarm::with_async_std_executor(
         transport,
