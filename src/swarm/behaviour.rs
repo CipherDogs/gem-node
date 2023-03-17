@@ -1,4 +1,4 @@
-use crate::CARGO_PKG_VERSION;
+use crate::constants::*;
 use libp2p::{gossipsub, identify, identity, mdns, swarm::NetworkBehaviour, PeerId};
 use std::error::Error;
 

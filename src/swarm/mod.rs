@@ -1,14 +1,12 @@
 pub mod behaviour;
 
+use crate::constants::*;
 use behaviour::Behaviour;
 use libp2p::{
     core::transport::upgrade::Version, gossipsub, identity, mplex, noise, tcp, PeerId, Swarm,
     Transport,
 };
 use std::{error::Error, time::Duration};
-
-pub const BLOCK_TOPIC: &str = "block";
-pub const TRANSACTION_TOPIC: &str = "transaction";
 
 pub async fn init() -> Result<Swarm<Behaviour>, Box<dyn Error>> {
     let local_key = identity::Keypair::generate_ed25519();

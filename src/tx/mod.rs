@@ -1,13 +1,8 @@
-use crate::account::{Address, PublicKey};
+use crate::types::*;
 use anyhow::{anyhow, Result};
-use blake2::{Blake2b, Digest, digest::consts::U32};
+use blake2::Digest;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
-
-pub type Hash = [u8; 32];
-pub type Signature = [u8; 64];
-
-type Blake2b256 = Blake2b<U32>;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Transaction {
