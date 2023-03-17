@@ -12,3 +12,16 @@ repository = "https://github.com/gemblockchain/gem-node"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.69"
+async-std = { version = "1.12", features = ["attributes"] }
+base58 = "0.2.0"
+bincode = "1.3.3"
+blake2 = "0.10.6"
+clap = { version = "4.1.6", features = ["derive"] }
+ed25519-dalek = "1.0.1"
+env_logger = "0.10.0"
+libp2p = { version = "0.51.1", features = ["async-std", "gossipsub", "identify", "macros", "mdns", "mplex", "noise", "tcp"] }
+log = "0.4.17"
+rocksdb = "0.20.1"
+serde = { version = "1.0", features = ["derive"] }
+serde-big-array = "0.5.0"
