@@ -1,4 +1,4 @@
-use crate::{tx::Transaction, types::*};
+use crate::{transaction::Transaction, types::*};
 use anyhow::Result;
 use blake2::Digest;
 use serde::{Deserialize, Serialize};
@@ -45,15 +45,15 @@ impl Account {
 
 #[derive(Default)]
 pub struct AccountTransactions {
-    pub txs: Vec<Transaction>,
+    pub transactions: Vec<Transaction>,
 }
 
 impl AccountTransactions {
     pub fn to_vec_hash_bytes(&self) -> Result<Vec<u8>> {
         let mut result = vec![];
 
-        for tx in self.txs.iter() {
-            let hash = tx.hash()?;
+        for transaction in self.transactions.iter() {
+            let hash = transaction.hash()?;
 
             result.extend_from_slice(&hash);
         }

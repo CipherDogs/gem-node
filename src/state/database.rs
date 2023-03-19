@@ -2,7 +2,7 @@ use crate::{
     account::{Account, AccountTransactions},
     block::{BlockTransactions, Header},
     constants::*,
-    tx::Transaction,
+    transaction::Transaction,
     types::*,
 };
 use anyhow::{anyhow, Result};
@@ -87,27 +87,29 @@ impl Database {
         for chunk in bytes.chunks(32) {
             let mut hash = [0u8; 32];
             hash.copy_from_slice(chunk);
-            block_transactions.txs.push(self.get_transaction(hash)?);
+            block_transactions
+                .transactions
+                .push(self.get_transaction(hash)?);
         }
 
         Ok(block_transactions)
     }
 
-    pub fn put_transaction(&self, tx: &Transaction) -> Result<()> {
-        let value = bincode::serialize(&tx)
+    pub fn put_transaction(&self, transaction: &Transaction) -> Result<()> {
+        let value = bincode::serialize(&transaction)
             .map_err(|error| anyhow!("Failed to serialize transaction: {error:?}"))?;
 
-        self.put(TRANSACTIONS, &tx.hash()?, &value)?;
+        self.put(TRANSACTIONS, &transaction.hash()?, &value)?;
 
         Ok(())
     }
 
     pub fn get_transaction(&self, hash: Hash) -> Result<Transaction> {
         let bytes = self.get(TRANSACTIONS, &hash)?;
-        let tx: Transaction = bincode::deserialize(&bytes[..])
+        let transaction: Transaction = bincode::deserialize(&bytes[..])
             .map_err(|error| anyhow!("Failed to deserialize transaction: {error:?}"))?;
 
-        Ok(tx)
+        Ok(transaction)
     }
 
     pub fn put_account(&self, account: &Account) -> Result<()> {
@@ -159,7 +161,9 @@ impl Database {
         for chunk in bytes.chunks(32) {
             let mut hash = [0u8; 32];
             hash.copy_from_slice(chunk);
-            account_transactions.txs.push(self.get_transaction(hash)?);
+            account_transactions
+                .transactions
+                .push(self.get_transaction(hash)?);
         }
 
         Ok(account_transactions)

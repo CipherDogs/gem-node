@@ -1,10 +1,13 @@
 pub const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-// Swarm topics
+/// RandomX change key
+pub const RANDOMX_CHANGE_KEY: u64 = 8640;
+
+/// Swarm topics
 pub const BLOCK_TOPIC: &str = "block";
 pub const TRANSACTION_TOPIC: &str = "transaction";
 
-// RocksDB column family
+/// RocksDB column family
 pub const BLOCK_HEADERS: &str = "block_headers";
 pub const BLOCK_HEADERS_HASH: &str = "block_headers_hash";
 pub const BLOCK_TRANSACTIONS: &str = "block_transactions";
