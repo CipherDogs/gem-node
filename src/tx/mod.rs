@@ -6,13 +6,13 @@ use serde_big_array::BigArray;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Transaction {
-    sender_public_key: PublicKey,
-    sequence_number: u64,
-    fee: u64,
-    timestamp: u64,
-    data: TransactionData,
+    pub sender_public_key: PublicKey,
+    pub sequence_number: u64,
+    pub fee: u64,
+    pub timestamp: u64,
+    pub data: TransactionData,
     #[serde(with = "BigArray")]
-    signature: Signature,
+    pub signature: Signature,
 }
 
 impl Transaction {
@@ -20,27 +20,11 @@ impl Transaction {
         self.data.type_id()
     }
 
-    pub fn sender_public_key(&self) -> PublicKey {
-        self.sender_public_key
-    }
-
-    pub fn sequence_number(&self) -> u64 {
-        self.sequence_number
-    }
-
     pub fn amount(&self) -> u64 {
         match self.data {
             TransactionData::Transfer { amount, .. } => amount,
             _ => 0,
         }
-    }
-
-    pub fn fee(&self) -> u64 {
-        self.fee
-    }
-
-    pub fn timestamp(&self) -> u64 {
-        self.timestamp
     }
 
     pub fn hash(&self) -> Result<Hash> {
