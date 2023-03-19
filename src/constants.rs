@@ -11,3 +11,5 @@ pub const BLOCK_TRANSACTIONS: &str = "block_transactions";
 pub const TRANSACTIONS: &str = "transactions";
 pub const ACCOUNTS: &str = "accounts";
 pub const ACCOUNTS_PUBLIC_KEY: &str = "account_public_key";
+pub const ACCOUNTS_TRANSACTIONS: &str = "accounts_transactions";
+pub const INFO: &str = "info";
