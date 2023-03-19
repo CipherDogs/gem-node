@@ -1,4 +1,10 @@
-use crate::{account, block, constants::*, tx, types::*};
+use crate::{
+    account::{Account, AccountTransactions},
+    block::{BlockTransactions, Header},
+    constants::*,
+    tx::Transaction,
+    types::*,
+};
 use anyhow::{anyhow, Result};
 use rocksdb::{ColumnFamilyDescriptor, Options, DB};
 
@@ -18,7 +24,7 @@ impl Database {
         Self { db }
     }
 
-    pub fn put_block_header(&self, header: &block::Header) -> Result<()> {
+    pub fn put_block_header(&self, header: &Header) -> Result<()> {
         let value = bincode::serialize(&header)
             .map_err(|error| anyhow!("Failed to serialize block: {error:?}"))?;
 
@@ -33,15 +39,15 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_block_header_from_hash(&self, hash: Hash) -> Result<block::Header> {
+    pub fn get_block_header_from_hash(&self, hash: Hash) -> Result<Header> {
         let bytes = self.get(BLOCK_HEADERS, &hash)?;
-        let header: block::Header = bincode::deserialize(&bytes[..])
+        let header: Header = bincode::deserialize(&bytes[..])
             .map_err(|error| anyhow!("Failed to deserialize block: {error:?}"))?;
 
         Ok(header)
     }
 
-    pub fn get_block_header_from_height(&self, height: u64) -> Result<block::Header> {
+    pub fn get_block_header_from_height(&self, height: u64) -> Result<Header> {
         let bytes = self.get(BLOCK_HEADERS_HASH, &height.to_le_bytes())?;
 
         let mut hash = [0u8; 32];
@@ -50,7 +56,7 @@ impl Database {
         Ok(self.get_block_header_from_hash(hash)?)
     }
 
-    pub fn get_last_block_header(&self) -> Result<block::Header> {
+    pub fn get_last_block_header(&self) -> Result<Header> {
         let bytes = self.get(INFO, b"last_header")?;
 
         let mut hash = [0u8; 32];
@@ -62,7 +68,7 @@ impl Database {
     pub fn put_block_transactions(
         &self,
         block_hash: Hash,
-        block_transactions: &block::BlockTransactions,
+        block_transactions: &BlockTransactions,
     ) -> Result<()> {
         self.put(
             BLOCK_TRANSACTIONS,
@@ -73,10 +79,10 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_block_transactions(&self, hash: Hash) -> Result<block::BlockTransactions> {
+    pub fn get_block_transactions(&self, hash: Hash) -> Result<BlockTransactions> {
         let bytes = self.get(BLOCK_TRANSACTIONS, &hash)?;
 
-        let mut block_transactions = block::BlockTransactions::default();
+        let mut block_transactions = BlockTransactions::default();
 
         for chunk in bytes.chunks(32) {
             let mut hash = [0u8; 32];
@@ -87,7 +93,7 @@ impl Database {
         Ok(block_transactions)
     }
 
-    pub fn put_transaction(&self, tx: &tx::Transaction) -> Result<()> {
+    pub fn put_transaction(&self, tx: &Transaction) -> Result<()> {
         let value = bincode::serialize(&tx)
             .map_err(|error| anyhow!("Failed to serialize transaction: {error:?}"))?;
 
@@ -96,15 +102,15 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_transaction(&self, hash: Hash) -> Result<tx::Transaction> {
+    pub fn get_transaction(&self, hash: Hash) -> Result<Transaction> {
         let bytes = self.get(TRANSACTIONS, &hash)?;
-        let tx: tx::Transaction = bincode::deserialize(&bytes[..])
+        let tx: Transaction = bincode::deserialize(&bytes[..])
             .map_err(|error| anyhow!("Failed to deserialize transaction: {error:?}"))?;
 
         Ok(tx)
     }
 
-    pub fn put_account(&self, account: &account::Account) -> Result<()> {
+    pub fn put_account(&self, account: &Account) -> Result<()> {
         let value = bincode::serialize(&account)
             .map_err(|error| anyhow!("Failed to serialize account: {error:?}"))?;
 
@@ -114,15 +120,15 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_account_from_public_key(&self, public_key: PublicKey) -> Result<account::Account> {
+    pub fn get_account_from_public_key(&self, public_key: PublicKey) -> Result<Account> {
         let bytes = self.get(ACCOUNTS, &public_key)?;
-        let account: account::Account = bincode::deserialize(&bytes[..])
+        let account: Account = bincode::deserialize(&bytes[..])
             .map_err(|error| anyhow!("Failed to deserialize account: {error:?}"))?;
 
         Ok(account)
     }
 
-    pub fn get_account_from_address(&self, address: Address) -> Result<account::Account> {
+    pub fn get_account_from_address(&self, address: Address) -> Result<Account> {
         let bytes = self.get(ACCOUNTS_PUBLIC_KEY, &address)?;
 
         let mut public_key = [0u8; 32];
@@ -134,7 +140,7 @@ impl Database {
     pub fn put_account_transactions(
         &self,
         public_key: PublicKey,
-        account_transactions: &account::AccountTransactions,
+        account_transactions: &AccountTransactions,
     ) -> Result<()> {
         self.put(
             ACCOUNTS_TRANSACTIONS,
@@ -145,13 +151,10 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_account_transactions(
-        &self,
-        public_key: PublicKey,
-    ) -> Result<account::AccountTransactions> {
+    pub fn get_account_transactions(&self, public_key: PublicKey) -> Result<AccountTransactions> {
         let bytes = self.get(ACCOUNTS_TRANSACTIONS, &public_key)?;
 
-        let mut account_transactions = account::AccountTransactions::default();
+        let mut account_transactions = AccountTransactions::default();
 
         for chunk in bytes.chunks(32) {
             let mut hash = [0u8; 32];

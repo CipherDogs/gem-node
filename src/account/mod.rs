@@ -1,4 +1,4 @@
-use crate::{tx, types::*};
+use crate::{tx::Transaction, types::*};
 use anyhow::Result;
 use blake2::Digest;
 use serde::{Deserialize, Serialize};
@@ -44,7 +44,7 @@ impl Account {
 }
 
 pub struct AccountTransactions {
-    pub txs: Vec<tx::Transaction>,
+    pub txs: Vec<Transaction>,
 }
 
 impl Default for AccountTransactions {
