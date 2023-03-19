@@ -46,15 +46,8 @@ impl Transaction {
     pub fn hash(&self) -> Result<Hash> {
         let mut hasher = Blake2b256::new();
 
-        hasher.update(self.sender_public_key);
-        hasher.update(self.sequence_number.to_le_bytes());
-        hasher.update(self.fee.to_le_bytes());
-        hasher.update(self.timestamp.to_le_bytes());
-
-        let data = bincode::serialize(&self.data)
-            .map_err(|error| anyhow!("Failed to serialize data: {error:?}"))?;
-
-        hasher.update(data);
+        let bytes = self.to_vec_bytes()?;
+        hasher.update(bytes.as_slice());
 
         Ok(hasher.finalize().into())
     }
@@ -63,16 +56,7 @@ impl Transaction {
         let public_key = ed25519_dalek::PublicKey::from_bytes(&self.sender_public_key)
             .map_err(|error| anyhow!("Public key serialization failed: {error:?}"))?;
 
-        let mut message: Vec<u8> = vec![];
-        message.extend_from_slice(&self.sender_public_key);
-        message.extend_from_slice(&self.sequence_number.to_le_bytes());
-        message.extend_from_slice(&self.fee.to_le_bytes());
-        message.extend_from_slice(&self.timestamp.to_le_bytes());
-
-        let data = bincode::serialize(&self.data)
-            .map_err(|error| anyhow!("Failed to serialize data: {error:?}"))?;
-
-        message.extend_from_slice(&data);
+        let message = self.to_vec_bytes()?;
 
         let signature = ed25519_dalek::Signature::from_bytes(&self.signature)
             .map_err(|error| anyhow!("Signature serialization failed: {error:?}"))?;
@@ -80,6 +64,22 @@ impl Transaction {
         public_key
             .verify_strict(message.as_slice(), &signature)
             .map_err(|_error| anyhow!("Transaction has no valid signature"))
+    }
+
+    fn to_vec_bytes(&self) -> Result<Vec<u8>> {
+        let mut bytes: Vec<u8> = vec![];
+
+        bytes.extend_from_slice(&self.sender_public_key);
+        bytes.extend_from_slice(&self.sequence_number.to_le_bytes());
+        bytes.extend_from_slice(&self.fee.to_le_bytes());
+        bytes.extend_from_slice(&self.timestamp.to_le_bytes());
+
+        let data = bincode::serialize(&self.data)
+            .map_err(|error| anyhow!("Failed to serialize data: {error:?}"))?;
+
+        bytes.extend_from_slice(&data);
+
+        Ok(bytes)
     }
 }
 
