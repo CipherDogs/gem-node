@@ -26,7 +26,7 @@ impl Database {
 
     pub fn put_block_header(&self, header: &Header) -> Result<()> {
         let value = bincode::serialize(&header)
-            .map_err(|error| anyhow!("Failed to serialize block: {error:?}"))?;
+            .map_err(|error| anyhow!("Failed to serialize header: {error:?}"))?;
 
         self.put(BLOCK_HEADERS, &header.hash(), &value)?;
         self.put(
@@ -42,7 +42,7 @@ impl Database {
     pub fn get_block_header_from_hash(&self, hash: Hash) -> Result<Header> {
         let bytes = self.get(BLOCK_HEADERS, &hash)?;
         let header: Header = bincode::deserialize(&bytes[..])
-            .map_err(|error| anyhow!("Failed to deserialize block: {error:?}"))?;
+            .map_err(|error| anyhow!("Failed to deserialize header: {error:?}"))?;
 
         Ok(header)
     }

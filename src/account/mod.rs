@@ -43,16 +43,9 @@ impl Account {
     }
 }
 
+#[derive(Default)]
 pub struct AccountTransactions {
     pub txs: Vec<Transaction>,
-}
-
-impl Default for AccountTransactions {
-    fn default() -> Self {
-        Self {
-            txs: Default::default(),
-        }
-    }
 }
 
 impl AccountTransactions {
