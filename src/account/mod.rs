@@ -1,4 +1,4 @@
-use crate::{transaction::Transaction, types::*};
+use crate::{primitive::*, transaction::Transaction};
 use anyhow::Result;
 use blake2::Digest;
 use serde::{Deserialize, Serialize};

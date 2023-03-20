@@ -1,4 +1,4 @@
-use crate::types::*;
+use crate::primitive::*;
 use anyhow::{anyhow, Result};
 use blake2::Digest;
 use serde::{Deserialize, Serialize};

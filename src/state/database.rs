@@ -2,8 +2,8 @@ use crate::{
     account::{Account, AccountTransactions},
     block::{BlockTransactions, Header},
     constants::*,
+    primitive::*,
     transaction::Transaction,
-    types::*,
 };
 use anyhow::{anyhow, Result};
 use rocksdb::{ColumnFamilyDescriptor, Options, DB};
