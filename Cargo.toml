@@ -11,6 +11,10 @@ repository = "https://github.com/gemblockchain/gem-node"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "gem"
+path = "src/main.rs"
+
 [dependencies]
 # Async
 async-std = { version = "1.12", features = ["attributes"] }

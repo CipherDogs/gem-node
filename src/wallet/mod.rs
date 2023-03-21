@@ -6,7 +6,7 @@ use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit};
 use rand::rngs::OsRng;
 use std::{
     fs::File,
-    io::{BufRead, Read, Write},
+    io::{Read, Write},
 };
 
 pub fn generate() -> (SecretKey, PublicKey) {
