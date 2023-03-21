@@ -67,13 +67,13 @@ impl Database {
 
     pub fn put_block_transactions(
         &self,
-        block_hash: Hash,
-        block_transactions: &BlockTransactions,
+        hash: Hash,
+        transactions: &BlockTransactions,
     ) -> Result<()> {
         self.put(
             BLOCK_TRANSACTIONS,
-            &block_hash,
-            block_transactions.to_vec_hash_bytes()?.as_slice(),
+            &hash,
+            transactions.to_vec_hash_bytes()?.as_slice(),
         )?;
 
         Ok(())
@@ -82,17 +82,15 @@ impl Database {
     pub fn get_block_transactions(&self, hash: Hash) -> Result<BlockTransactions> {
         let bytes = self.get(BLOCK_TRANSACTIONS, &hash)?;
 
-        let mut block_transactions = BlockTransactions::default();
+        let mut transactions = BlockTransactions::default();
 
         for chunk in bytes.chunks(32) {
             let mut hash = EMPTY_HASH;
             hash.copy_from_slice(chunk);
-            block_transactions
-                .transactions
-                .push(self.get_transaction(hash)?);
+            transactions.transactions.push(self.get_transaction(hash)?);
         }
 
-        Ok(block_transactions)
+        Ok(transactions)
     }
 
     pub fn put_transaction(&self, transaction: &Transaction) -> Result<()> {
