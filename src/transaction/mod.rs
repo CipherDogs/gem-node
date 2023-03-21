@@ -47,7 +47,7 @@ impl Transaction {
 
         public_key
             .verify_strict(message.as_slice(), &signature)
-            .map_err(|_error| anyhow!("Transaction has no valid signature"))
+            .map_err(|error| anyhow!("Transaction has no valid signature: {error:?}"))
     }
 
     fn to_vec_bytes(&self) -> Result<Vec<u8>> {
