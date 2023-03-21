@@ -1,4 +1,4 @@
-use crate::{primitive::*, transaction::Transaction};
+use crate::{constants::*, primitive::*, transaction::Transaction};
 use anyhow::Result;
 use blake2::Digest;
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ impl Account {
     pub fn from_address(address: Address, balance: u64) -> Self {
         Self {
             address,
-            public_key: [0u8; 32],
+            public_key: EMPTY_PUBLIC_KEY,
             balance,
             sequence_number: 0,
         }

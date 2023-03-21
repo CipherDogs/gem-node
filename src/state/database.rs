@@ -50,7 +50,7 @@ impl Database {
     pub fn get_block_header_from_height(&self, height: u64) -> Result<Header> {
         let bytes = self.get(BLOCK_HEADERS_HASH, &height.to_le_bytes())?;
 
-        let mut hash = [0u8; 32];
+        let mut hash = EMPTY_HASH;
         hash.copy_from_slice(bytes.as_slice());
 
         Ok(self.get_block_header_from_hash(hash)?)
@@ -59,7 +59,7 @@ impl Database {
     pub fn get_last_block_header(&self) -> Result<Header> {
         let bytes = self.get(INFO, b"last_header")?;
 
-        let mut hash = [0u8; 32];
+        let mut hash = EMPTY_HASH;
         hash.copy_from_slice(bytes.as_slice());
 
         Ok(self.get_block_header_from_hash(hash)?)
@@ -85,7 +85,7 @@ impl Database {
         let mut block_transactions = BlockTransactions::default();
 
         for chunk in bytes.chunks(32) {
-            let mut hash = [0u8; 32];
+            let mut hash = EMPTY_HASH;
             hash.copy_from_slice(chunk);
             block_transactions
                 .transactions
@@ -133,7 +133,7 @@ impl Database {
     pub fn get_account_from_address(&self, address: Address) -> Result<Account> {
         let bytes = self.get(ACCOUNTS_PUBLIC_KEY, &address)?;
 
-        let mut public_key = [0u8; 32];
+        let mut public_key = EMPTY_PUBLIC_KEY;
         public_key.copy_from_slice(bytes.as_slice());
 
         Ok(self.get_account_from_public_key(public_key)?)
@@ -159,7 +159,7 @@ impl Database {
         let mut account_transactions = AccountTransactions::default();
 
         for chunk in bytes.chunks(32) {
-            let mut hash = [0u8; 32];
+            let mut hash = EMPTY_HASH;
             hash.copy_from_slice(chunk);
             account_transactions
                 .transactions
