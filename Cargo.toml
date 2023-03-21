@@ -39,6 +39,7 @@ ed25519-dalek = "1.0.1"
 argon2 = "0.5.0"
 chacha20poly1305 = "0.10.1"
 hex = "0.4.3"
+rpassword = "7.2.0"
 
 # Storing the state
 rocksdb = "0.20.1"

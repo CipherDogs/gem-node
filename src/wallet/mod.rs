@@ -36,7 +36,7 @@ pub fn import(base58: &str) -> Result<(SecretKey, PublicKey)> {
 }
 
 pub fn load(wallet_path: &str) -> Result<(SecretKey, PublicKey)> {
-    let password = read_password()?;
+    let password = rpassword::prompt_password("Wallet password: ")?;
 
     let mut file = File::open(wallet_path)?;
 
@@ -69,7 +69,7 @@ pub fn load(wallet_path: &str) -> Result<(SecretKey, PublicKey)> {
 }
 
 pub fn save(wallet_path: &str, secret_key: SecretKey) -> Result<()> {
-    let password = read_password()?;
+    let password = rpassword::prompt_password("Wallet password: ")?;
 
     let salt: [u8; 32] = rand::random();
     let nonce: [u8; 12] = rand::random();
@@ -90,17 +90,6 @@ pub fn save(wallet_path: &str, secret_key: SecretKey) -> Result<()> {
     file.write_all(hex::encode(bytes).as_bytes())?;
 
     Ok(())
-}
-
-fn read_password() -> Result<String> {
-    println!("Wallet password:");
-
-    let mut password = String::new();
-
-    let stdin = std::io::stdin();
-    stdin.lock().read_line(&mut password)?;
-
-    Ok(password)
 }
 
 fn argon2_key_derivation(password: &[u8], salt: &[u8; 32]) -> Result<Hash> {
