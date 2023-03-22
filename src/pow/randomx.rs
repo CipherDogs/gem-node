@@ -148,3 +148,22 @@ impl RandomXVMInstance {
             .map_err(|error| anyhow!("Hash calculation failed: {error:?}"))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn basic_initialization_and_hash() {
+        let randomx = RandomXFactory::default();
+
+        let randomx_vm = randomx.create(b"key").unwrap();
+        let hash = randomx_vm.calculate_hash(b"hash").unwrap();
+
+        let randomx_vm = randomx.create(b"key").unwrap();
+        assert_eq!(randomx_vm.calculate_hash(b"hash").unwrap(), hash);
+
+        let randomx_vm = randomx.create(b"new_key").unwrap();
+        assert_ne!(randomx_vm.calculate_hash(b"hash").unwrap(), hash);
+    }
+}
