@@ -11,6 +11,11 @@ impl Transactions {
         self.0.len() as u64
     }
 
+    /// Transactions Vec is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Getting a Vec<Hash> vector of transaction hashes
     pub fn to_vec_hash(&self) -> Result<Vec<Hash>> {
         let mut result = vec![];

@@ -12,7 +12,7 @@ impl MerkleTree {
     pub fn construct(transactions: &Transactions) -> Result<MerkleTree> {
         let mut transactions_hashes = transactions.to_vec_hash()?;
 
-        if transactions_hashes.len() == 0 {
+        if transactions_hashes.is_empty() {
             transactions_hashes.push(EMPTY_HASH);
             transactions_hashes.push(EMPTY_HASH);
         } else if transactions_hashes.len() % 2 != 0 {
