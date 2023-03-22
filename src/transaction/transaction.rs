@@ -5,6 +5,7 @@ use ed25519_dalek::Signer;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 
+/// Transaction data. Data specific to a particular transaction type are stored in the `data` field
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Transaction {
     pub sender_public_key: PublicKey,
@@ -28,10 +29,12 @@ impl Transaction {
         }
     }
 
+    /// Getting the type_id depending on the transaction type
     pub fn type_id(&self) -> u8 {
         self.data.type_id()
     }
 
+    /// Getting the amount depending on the type of transaction
     pub fn amount(&self) -> u64 {
         match self.data {
             Data::Transfer { amount, .. } => amount,
@@ -39,6 +42,7 @@ impl Transaction {
         }
     }
 
+    /// Transaction hash calculation
     pub fn hash(&self) -> Result<Hash> {
         let mut hasher = Blake2b256::new();
 
@@ -48,6 +52,7 @@ impl Transaction {
         Ok(hasher.finalize().into())
     }
 
+    /// Signing a transaction with a private key
     pub fn sign(&mut self, secret_key: &SecretKey) -> Result<()> {
         let secret_key = ed25519_dalek::SecretKey::from_bytes(secret_key.as_slice())
             .map_err(|error| anyhow!("Secret key serialization failed: {error:?}"))?;
@@ -68,6 +73,7 @@ impl Transaction {
         Ok(())
     }
 
+    /// Transaction signature verification
     pub fn signature_verify(&self) -> Result<()> {
         let public_key = ed25519_dalek::PublicKey::from_bytes(&self.sender_public_key)
             .map_err(|error| anyhow!("Public key serialization failed: {error:?}"))?;

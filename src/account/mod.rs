@@ -1,5 +1,4 @@
-use crate::{constants::*, primitive::*, transaction::Transaction};
-use anyhow::Result;
+use crate::{constants::*, primitive::*};
 use blake2::Digest;
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +11,7 @@ pub struct Account {
 }
 
 impl Account {
+    /// Create an account from an address
     pub fn from_address(address: Address, balance: u64) -> Self {
         Self {
             address,
@@ -21,6 +21,7 @@ impl Account {
         }
     }
 
+    /// Create an account from an public key
     pub fn from_public_key(public_key: PublicKey) -> Self {
         let mut hasher = Blake2b256::new();
         hasher.update(public_key);
@@ -34,30 +35,13 @@ impl Account {
         }
     }
 
+    /// Get sequence number
     pub fn sequence_number(&self) -> u64 {
         self.sequence_number
     }
 
+    /// Sequence number increase
     pub fn inc_sequence_number(&mut self) {
         self.sequence_number += 1;
-    }
-}
-
-#[derive(Default)]
-pub struct AccountTransactions {
-    pub transactions: Vec<Transaction>,
-}
-
-impl AccountTransactions {
-    pub fn to_vec_hash_bytes(&self) -> Result<Vec<u8>> {
-        let mut result = vec![];
-
-        for transaction in self.transactions.iter() {
-            let hash = transaction.hash()?;
-
-            result.extend_from_slice(&hash);
-        }
-
-        Ok(result)
     }
 }

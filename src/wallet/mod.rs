@@ -9,6 +9,7 @@ use std::{
     io::{Read, Write},
 };
 
+// Keypair and account generation
 pub fn generate() -> (SecretKey, PublicKey) {
     let keypair = generate_keypair();
 
@@ -24,6 +25,7 @@ pub fn generate() -> (SecretKey, PublicKey) {
     (secret_key, public_key)
 }
 
+/// Importing the secret key from the base58 string
 pub fn import(base58: &str) -> Result<(SecretKey, PublicKey)> {
     let bytes = base58
         .from_base58()
@@ -35,6 +37,7 @@ pub fn import(base58: &str) -> Result<(SecretKey, PublicKey)> {
     Ok((secret_key.to_bytes(), public_key.to_bytes()))
 }
 
+/// Loading a secret key from wallet.dat
 pub fn load(wallet_path: &str) -> Result<(SecretKey, PublicKey)> {
     let password = rpassword::prompt_password("Wallet password: ")?;
 
@@ -68,6 +71,7 @@ pub fn load(wallet_path: &str) -> Result<(SecretKey, PublicKey)> {
     Ok((secret_key.to_bytes(), public_key.to_bytes()))
 }
 
+/// Saving a secret key in wallet.dat
 pub fn save(wallet_path: &str, secret_key: SecretKey) -> Result<()> {
     let password = rpassword::prompt_password("Wallet password: ")?;
 
@@ -110,6 +114,7 @@ fn argon2_key_derivation(password: &[u8], salt: &[u8; 32]) -> Result<Hash> {
     Ok(bytes)
 }
 
+/// Generation of a random ed25519 keypair
 fn generate_keypair() -> ed25519_dalek::Keypair {
     let mut csprng = OsRng {};
     ed25519_dalek::Keypair::generate(&mut csprng)
