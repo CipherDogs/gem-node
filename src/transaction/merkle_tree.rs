@@ -77,7 +77,7 @@ mod tests {
         let transactions = Transactions::default();
         let mut hashes = transactions.to_vec_hash().unwrap();
 
-        for i in 1..3 {
+        for _ in 1..3 {
             hashes.push(EMPTY_HASH);
         }
 
@@ -92,7 +92,7 @@ mod tests {
         };
         let mut transaction = Transaction::new(0, 0, 0, data);
 
-        let (secret_key, public_key) = wallet::generate();
+        let (secret_key, _) = wallet::generate();
         transaction.sign(&secret_key).unwrap();
 
         let mut transactions = Transactions::default();
