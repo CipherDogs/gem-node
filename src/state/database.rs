@@ -1,9 +1,9 @@
 use crate::{
-    account::{Account, AccountTransactions},
-    block::{BlockTransactions, Header},
+    account::Account,
+    block::Header,
     constants::*,
     primitive::*,
-    transaction::Transaction,
+    transaction::{Transaction, Transactions},
 };
 use anyhow::{anyhow, Result};
 use rocksdb::{ColumnFamilyDescriptor, Options, DB};
@@ -65,11 +65,7 @@ impl Database {
         Ok(self.get_block_header_from_hash(hash)?)
     }
 
-    pub fn put_block_transactions(
-        &self,
-        hash: Hash,
-        transactions: &BlockTransactions,
-    ) -> Result<()> {
+    pub fn put_block_transactions(&self, hash: Hash, transactions: &Transactions) -> Result<()> {
         self.put(
             BLOCK_TRANSACTIONS,
             &hash,
@@ -79,15 +75,15 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_block_transactions(&self, hash: Hash) -> Result<BlockTransactions> {
+    pub fn get_block_transactions(&self, hash: Hash) -> Result<Transactions> {
         let bytes = self.get(BLOCK_TRANSACTIONS, &hash)?;
 
-        let mut transactions = BlockTransactions::default();
+        let mut transactions = Transactions::default();
 
         for chunk in bytes.chunks(32) {
             let mut hash = EMPTY_HASH;
             hash.copy_from_slice(chunk);
-            transactions.transactions.push(self.get_transaction(hash)?);
+            transactions.push(self.get_transaction(hash)?);
         }
 
         Ok(transactions)
@@ -140,31 +136,29 @@ impl Database {
     pub fn put_account_transactions(
         &self,
         public_key: PublicKey,
-        account_transactions: &AccountTransactions,
+        transactions: &Transactions,
     ) -> Result<()> {
         self.put(
             ACCOUNTS_TRANSACTIONS,
             &public_key,
-            account_transactions.to_vec_hash_bytes()?.as_slice(),
+            transactions.to_vec_hash_bytes()?.as_slice(),
         )?;
 
         Ok(())
     }
 
-    pub fn get_account_transactions(&self, public_key: PublicKey) -> Result<AccountTransactions> {
+    pub fn get_account_transactions(&self, public_key: PublicKey) -> Result<Transactions> {
         let bytes = self.get(ACCOUNTS_TRANSACTIONS, &public_key)?;
 
-        let mut account_transactions = AccountTransactions::default();
+        let mut transactions = Transactions::default();
 
         for chunk in bytes.chunks(32) {
             let mut hash = EMPTY_HASH;
             hash.copy_from_slice(chunk);
-            account_transactions
-                .transactions
-                .push(self.get_transaction(hash)?);
+            transactions.push(self.get_transaction(hash)?);
         }
 
-        Ok(account_transactions)
+        Ok(transactions)
     }
 
     fn descriptors() -> Vec<ColumnFamilyDescriptor> {
