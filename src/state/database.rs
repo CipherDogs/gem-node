@@ -116,6 +116,10 @@ impl Database {
         Ok(())
     }
 
+    pub fn exist_account_from_public_key(&self, public_key: PublicKey) -> Result<bool> {
+        self.exist(ACCOUNTS, &public_key)
+    }
+
     pub fn get_account_from_public_key(&self, public_key: PublicKey) -> Result<Account> {
         let bytes = self.get(ACCOUNTS, &public_key)?;
         let account: Account = bincode::deserialize(&bytes[..])
@@ -197,5 +201,14 @@ impl Database {
             Ok(None) => Err(anyhow!("Value not found")),
             Err(error) => Err(anyhow!("Failed to reading data from the database: {error}")),
         }
+    }
+
+    fn exist(&self, cf: &str, key: &[u8]) -> Result<bool> {
+        let cf = self
+            .db
+            .cf_handle(cf)
+            .ok_or_else(|| anyhow!("Failed column family handle"))?;
+
+        Ok(self.db.key_may_exist_cf(cf, key))
     }
 }
