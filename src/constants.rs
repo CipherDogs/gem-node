@@ -2,7 +2,7 @@ use crate::primitive::*;
 
 pub const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-//
+/// Empty primitives
 pub const EMPTY_HASH: Hash = [0u8; 32];
 pub const EMPTY_PUBLIC_KEY: PublicKey = [0u8; 32];
 pub const EMPTY_SECRET_KEY: SecretKey = [0u8; 32];
