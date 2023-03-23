@@ -111,11 +111,9 @@ pub fn sync_response(state: &mut State, response: SyncResponse) -> Result<()> {
             log::info!("New block received: {}", block.header.height);
             state.put_block(&block)?;
         }
-
-        Ok(())
-    } else {
-        Err(anyhow!("Failed to deserialize blocks"))
     }
+
+    Ok(())
 }
 
 pub fn gossipsub_handler(state: &mut State, message: gossipsub::Message) -> Result<()> {
@@ -124,18 +122,18 @@ pub fn gossipsub_handler(state: &mut State, message: gossipsub::Message) -> Resu
             let block = bincode::deserialize::<Block>(&message.data)
                 .map_err(|error| anyhow!("Failed to deserialize block: {error:?}"))?;
 
-            state.put_block(&block)?;
             log::info!("New block received: {}", block.header.height);
+            state.put_block(&block)?;
         }
         TRANSACTION_TOPIC => {
             let transaction = bincode::deserialize::<Transaction>(&message.data)
                 .map_err(|error| anyhow!("Failed to deserialize transaction: {error:?}"))?;
 
-            state.put_transaction_mempool(transaction);
             log::info!(
                 "New transaction received: {}",
                 transaction.hash()?.to_base58()
             );
+            state.put_transaction_mempool(transaction);
         }
         _ => {}
     }
