@@ -1,4 +1,4 @@
-use crate::constants::*;
+use crate::{constants::*, swarm};
 use libp2p::{gossipsub, identify, identity, mdns, swarm::NetworkBehaviour, PeerId};
 use std::error::Error;
 
@@ -15,15 +15,13 @@ impl Behaviour {
         local_key: identity::Keypair,
         local_peer_id: PeerId,
     ) -> Result<Self, Box<dyn Error>> {
-        let protocol_version = format!("gem/{}", CARGO_PKG_VERSION);
-
         Ok(Self {
             gossipsub: gossipsub::Behaviour::new(
                 gossipsub::MessageAuthenticity::Signed(local_key.clone()),
                 gossipsub::ConfigBuilder::default().build()?,
             )?,
             identify: identify::Behaviour::new(identify::Config::new(
-                protocol_version,
+                swarm::protocol_version(),
                 local_key.public(),
             )),
             mdns: mdns::async_io::Behaviour::new(mdns::Config::default(), local_peer_id)?,

@@ -34,3 +34,7 @@ pub async fn init() -> Result<Swarm<Behaviour>, Box<dyn Error>> {
         local_peer_id,
     ))
 }
+
+pub fn protocol_version() -> String {
+    format!("gem/{}", CARGO_PKG_VERSION)
+}
