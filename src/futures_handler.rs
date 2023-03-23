@@ -57,8 +57,6 @@ pub fn sync_blocks(state: &State, swarm: &mut Swarm<Behaviour>) -> Result<()> {
             .behaviour_mut()
             .request_response
             .send_request(&peer_id, sync_request);
-    } else {
-        log::error!("Not peers!!!");
     }
 
     Ok(())
