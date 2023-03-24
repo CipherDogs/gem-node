@@ -17,7 +17,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Async
-async-std = { version = "1.12", features = ["attributes"] }
+async-std = { version = "1.12", features = ["attributes", "unstable"] }
 async-trait = "0.1"
 
 # Handling command line arguments
