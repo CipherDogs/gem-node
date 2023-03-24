@@ -57,6 +57,8 @@ pub fn sync_blocks(state: &State, swarm: &mut Swarm<Behaviour>) -> Result<()> {
             .behaviour_mut()
             .request_response
             .send_request(&peer_id, sync_request);
+    } else {
+        log::warn!("Failed to get peer");
     }
 
     Ok(())
@@ -71,7 +73,7 @@ pub fn sync_request(
     let mut height: u64 = bincode::deserialize(&request.0)
         .map_err(|error| anyhow!("Failed to deserialize height for sync: {error:?}"))?;
 
-    if state.last_header.height < height {
+    if state.last_header.height > height {
         let mut size = 0;
         let mut blocks = vec![];
 
