@@ -80,10 +80,11 @@ impl Database {
 
         let mut transactions = Transactions::default();
 
-        for chunk in bytes.chunks(32) {
-            let mut hash = EMPTY_HASH;
-            hash.copy_from_slice(chunk);
-            transactions.push(self.get_transaction(hash)?);
+        for bytes in self.get_multi(TRANSACTIONS, bytes.chunks(32).collect())? {
+            let transaction: Transaction = bincode::deserialize(&bytes[..])
+                .map_err(|error| anyhow!("Failed to deserialize transaction: {error:?}"))?;
+
+            transactions.push(transaction);
         }
 
         Ok(transactions)
@@ -156,10 +157,11 @@ impl Database {
 
         let mut transactions = Transactions::default();
 
-        for chunk in bytes.chunks(32) {
-            let mut hash = EMPTY_HASH;
-            hash.copy_from_slice(chunk);
-            transactions.push(self.get_transaction(hash)?);
+        for bytes in self.get_multi(TRANSACTIONS, bytes.chunks(32).collect())? {
+            let transaction: Transaction = bincode::deserialize(&bytes[..])
+                .map_err(|error| anyhow!("Failed to deserialize transaction: {error:?}"))?;
+
+            transactions.push(transaction);
         }
 
         Ok(transactions)
@@ -201,6 +203,28 @@ impl Database {
             Ok(None) => Err(anyhow!("Value not found")),
             Err(error) => Err(anyhow!("Failed to reading data from the database: {error}")),
         }
+    }
+
+    fn get_multi(&self, cf: &str, keys: Vec<&[u8]>) -> Result<Vec<Vec<u8>>> {
+        let cf = self
+            .db
+            .cf_handle(cf)
+            .ok_or_else(|| anyhow!("Failed column family handle"))?;
+        let keys = keys.into_iter().map(|key| (&cf, key)).collect::<Vec<_>>();
+
+        let mut result = vec![];
+
+        for item in self.db.multi_get_cf(keys) {
+            match item {
+                Ok(Some(value)) => result.push(value),
+                Ok(None) => return Err(anyhow!("Value not found")),
+                Err(error) => {
+                    return Err(anyhow!("Failed to reading data from the database: {error}"))
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     fn exist(&self, cf: &str, key: &[u8]) -> Result<bool> {
