@@ -6,7 +6,7 @@ use crate::{
     transaction::{Transaction, Transactions},
 };
 use anyhow::{anyhow, Result};
-use rocksdb::{ColumnFamilyDescriptor, Options, DB};
+use rocksdb::{ColumnFamilyDescriptor, Options, WriteBatch, DB};
 
 pub struct Database {
     db: DB,
@@ -24,17 +24,28 @@ impl Database {
         Self { db }
     }
 
-    pub fn put_block_header(&self, header: &Header) -> Result<()> {
+    pub fn create_batch(&self) -> WriteBatch {
+        WriteBatch::default()
+    }
+
+    pub fn write(&self, batch: WriteBatch) -> Result<()> {
+        self.db
+            .write(batch)
+            .map_err(|error| anyhow!("Failed to write to the database: {error:?}"))
+    }
+
+    pub fn put_block_header(&self, batch: &mut WriteBatch, header: &Header) -> Result<()> {
         let value = bincode::serialize(&header)
             .map_err(|error| anyhow!("Failed to serialize header: {error:?}"))?;
 
-        self.put(BLOCK_HEADERS, &header.hash(), &value)?;
-        self.put(
+        self.put_batch(batch, BLOCK_HEADERS, &header.hash(), &value)?;
+        self.put_batch(
+            batch,
             BLOCK_HEADERS_HASH,
             &header.height.to_le_bytes(),
             &header.hash(),
         )?;
-        self.put(INFO, b"last_header", &header.hash())?;
+        self.put_batch(batch, INFO, b"last_header", &header.hash())?;
 
         Ok(())
     }
@@ -65,8 +76,14 @@ impl Database {
         Ok(self.get_block_header_from_hash(hash)?)
     }
 
-    pub fn put_block_transactions(&self, hash: Hash, transactions: &Transactions) -> Result<()> {
-        self.put(
+    pub fn put_block_transactions(
+        &self,
+        batch: &mut WriteBatch,
+        hash: Hash,
+        transactions: &Transactions,
+    ) -> Result<()> {
+        self.put_batch(
+            batch,
             BLOCK_TRANSACTIONS,
             &hash,
             transactions.to_vec_hash_bytes()?.as_slice(),
@@ -90,11 +107,11 @@ impl Database {
         Ok(transactions)
     }
 
-    pub fn put_transaction(&self, transaction: &Transaction) -> Result<()> {
+    pub fn put_transaction(&self, batch: &mut WriteBatch, transaction: &Transaction) -> Result<()> {
         let value = bincode::serialize(&transaction)
             .map_err(|error| anyhow!("Failed to serialize transaction: {error:?}"))?;
 
-        self.put(TRANSACTIONS, &transaction.hash()?, &value)?;
+        self.put_batch(batch, TRANSACTIONS, &transaction.hash()?, &value)?;
 
         Ok(())
     }
@@ -107,18 +124,19 @@ impl Database {
         Ok(transaction)
     }
 
-    pub fn put_account(&self, account: &Account) -> Result<()> {
+    pub fn put_account(&self, batch: &mut WriteBatch, account: &Account) -> Result<()> {
         let value = bincode::serialize(&account)
             .map_err(|error| anyhow!("Failed to serialize account: {error:?}"))?;
 
-        self.put(ACCOUNTS, &account.public_key, &value)?;
-        self.put(ACCOUNTS_PUBLIC_KEY, &account.address, &account.public_key)?;
+        self.put_batch(batch, ACCOUNTS, &account.public_key, &value)?;
+        self.put_batch(
+            batch,
+            ACCOUNTS_PUBLIC_KEY,
+            &account.address,
+            &account.public_key,
+        )?;
 
         Ok(())
-    }
-
-    pub fn exist_account_from_public_key(&self, public_key: PublicKey) -> Result<bool> {
-        self.exist(ACCOUNTS, &public_key)
     }
 
     pub fn get_account_from_public_key(&self, public_key: PublicKey) -> Result<Account> {
@@ -140,10 +158,12 @@ impl Database {
 
     pub fn put_account_transactions(
         &self,
+        batch: &mut WriteBatch,
         public_key: PublicKey,
         transactions: &Transactions,
     ) -> Result<()> {
-        self.put(
+        self.put_batch(
+            batch,
             ACCOUNTS_TRANSACTIONS,
             &public_key,
             transactions.to_vec_hash_bytes()?.as_slice(),
@@ -181,15 +201,15 @@ impl Database {
         ]
     }
 
-    fn put(&self, cf: &str, key: &[u8], value: &[u8]) -> Result<()> {
+    fn put_batch(&self, batch: &mut WriteBatch, cf: &str, key: &[u8], value: &[u8]) -> Result<()> {
         let cf = self
             .db
             .cf_handle(cf)
             .ok_or_else(|| anyhow!("Failed column family handle"))?;
 
-        self.db
-            .put_cf(cf, key, value)
-            .map_err(|error| anyhow!("Failed to write to the database: {error:?}"))
+        batch.put_cf(cf, key, value);
+
+        Ok(())
     }
 
     fn get(&self, cf: &str, key: &[u8]) -> Result<Vec<u8>> {
@@ -225,14 +245,5 @@ impl Database {
         }
 
         Ok(result)
-    }
-
-    fn exist(&self, cf: &str, key: &[u8]) -> Result<bool> {
-        let cf = self
-            .db
-            .cf_handle(cf)
-            .ok_or_else(|| anyhow!("Failed column family handle"))?;
-
-        Ok(self.db.key_may_exist_cf(cf, key))
     }
 }
