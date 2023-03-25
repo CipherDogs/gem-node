@@ -28,7 +28,9 @@ pub fn mining_handler(
                 block.header.nonce,
             );
 
-            state.put_block(&block)?;
+            if let Err(error) = state.put_block(&block) {
+                log::warn!("Put block failed: {error:?}");
+            }
 
             let block_bytes = bincode::serialize(&block)
                 .map_err(|error| anyhow!("Failed to serialize block: {error:?}"))?;
@@ -111,7 +113,9 @@ pub fn sync_response(state: &mut State, response: SyncResponse) -> Result<()> {
     if let Ok(blocks) = bincode::deserialize::<Vec<Block>>(response.0.as_slice()) {
         for block in blocks {
             log::info!("New block received: {}", block.header.height);
-            state.put_block(&block)?;
+            if let Err(error) = state.put_block(&block) {
+                log::warn!("Put block failed: {error:?}");
+            }
         }
     }
 
@@ -125,7 +129,9 @@ pub fn gossipsub_handler(state: &mut State, message: gossipsub::Message) -> Resu
                 .map_err(|error| anyhow!("Failed to deserialize block: {error:?}"))?;
 
             log::info!("New block received: {}", block.header.height);
-            state.put_block(&block)?;
+            if let Err(error) = state.put_block(&block) {
+                log::warn!("Put block failed: {error:?}");
+            }
         }
         TRANSACTION_TOPIC => {
             let transaction = bincode::deserialize::<Transaction>(&message.data)
