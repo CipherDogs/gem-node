@@ -90,7 +90,7 @@ mod tests {
         let data = Data::RotatePublicKey {
             public_key: EMPTY_PUBLIC_KEY,
         };
-        let mut transaction = Transaction::new(0, 0, 0, data);
+        let mut transaction = Transaction::new(EMPTY_ADDRESS, 0, 1024, 0, data);
 
         let (secret_key, _) = wallet::generate();
         transaction.sign(&secret_key).unwrap();

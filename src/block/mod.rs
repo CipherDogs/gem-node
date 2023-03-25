@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn signature_verify() {
-        let mut header = Header::new(0, 0, EMPTY_HASH, 0, EMPTY_HASH, 0);
+        let mut header = Header::new(0, 0, EMPTY_HASH, EMPTY_ADDRESS, 1024, EMPTY_HASH, 0);
 
         let (secret_key, _) = wallet::generate();
         header.sign(&secret_key).unwrap();

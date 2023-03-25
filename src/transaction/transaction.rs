@@ -124,7 +124,7 @@ mod tests {
         let data = Data::RotatePublicKey {
             public_key: EMPTY_PUBLIC_KEY,
         };
-        let mut transaction = Transaction::new(0, 1024, 0, data);
+        let mut transaction = Transaction::new(EMPTY_ADDRESS, 0, 1024, 0, data);
 
         let (secret_key, _) = wallet::generate();
         transaction.sign(&secret_key).unwrap();
@@ -137,7 +137,7 @@ mod tests {
         let data = Data::RotatePublicKey {
             public_key: EMPTY_PUBLIC_KEY,
         };
-        let transaction = Transaction::new(0, 1024, 0, data);
+        let transaction = Transaction::new(EMPTY_ADDRESS, 0, 1024, 0, data);
 
         assert_eq!(transaction.type_id(), 1);
         assert_eq!(transaction.amount(), 0);
@@ -153,7 +153,7 @@ mod tests {
             amount: 1024,
             attachment: String::from("test"),
         };
-        let transaction = Transaction::new(0, 1024, 0, data);
+        let transaction = Transaction::new(EMPTY_ADDRESS, 0, 1024, 0, data);
 
         assert_eq!(transaction.type_id(), 2);
         assert_eq!(transaction.amount(), 1024);
