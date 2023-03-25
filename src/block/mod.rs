@@ -20,6 +20,7 @@ pub struct Header {
     pub height: u64,
     pub timestamp: u128,
     pub prev_block: Hash,
+    pub generator: Address,
     pub generator_public_key: PublicKey,
     pub reward: u64,
     pub root: Hash,
@@ -35,6 +36,7 @@ impl Header {
         height: u64,
         timestamp: u128,
         prev_block: Hash,
+        generator: Address,
         reward: u64,
         root: Hash,
         transactions_count: u64,
@@ -43,6 +45,7 @@ impl Header {
             height,
             timestamp,
             prev_block,
+            generator,
             generator_public_key: EMPTY_PUBLIC_KEY,
             reward,
             root,
@@ -115,6 +118,7 @@ impl Header {
         bytes.extend_from_slice(&self.height.to_le_bytes());
         bytes.extend_from_slice(&self.timestamp.to_le_bytes());
         bytes.extend_from_slice(&self.prev_block);
+        bytes.extend_from_slice(&self.generator);
         bytes.extend_from_slice(&self.generator_public_key);
         bytes.extend_from_slice(&self.reward.to_le_bytes());
         bytes.extend_from_slice(&self.root);

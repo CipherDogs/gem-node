@@ -8,6 +8,7 @@ use serde_big_array::BigArray;
 /// Transaction data. Data specific to a particular transaction type are stored in the `data` field
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Transaction {
+    pub sender: Address,
     pub sender_public_key: PublicKey,
     pub sequence_number: u64,
     pub fee: u64,
@@ -18,8 +19,15 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn new(sequence_number: u64, fee: u64, timestamp: u128, data: Data) -> Self {
+    pub fn new(
+        sender: Address,
+        sequence_number: u64,
+        fee: u64,
+        timestamp: u128,
+        data: Data,
+    ) -> Self {
         Self {
+            sender,
             sender_public_key: EMPTY_PUBLIC_KEY,
             sequence_number,
             fee,
@@ -91,6 +99,7 @@ impl Transaction {
     fn to_vec_bytes(&self) -> Result<Vec<u8>> {
         let mut bytes: Vec<u8> = vec![];
 
+        bytes.extend_from_slice(&self.sender);
         bytes.extend_from_slice(&self.sender_public_key);
         bytes.extend_from_slice(&self.sequence_number.to_le_bytes());
         bytes.extend_from_slice(&self.fee.to_le_bytes());
