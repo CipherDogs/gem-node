@@ -12,11 +12,11 @@ pub struct Account {
 
 impl Account {
     /// Create an account from an address
-    pub fn from_address(address: Address, balance: u64) -> Self {
+    pub fn from_address(address: Address) -> Self {
         Self {
             address,
             public_key: EMPTY_PUBLIC_KEY,
-            balance,
+            balance: 0,
             sequence_number: 0,
         }
     }
@@ -25,6 +25,7 @@ impl Account {
     pub fn from_public_key(public_key: PublicKey) -> Self {
         let mut hasher = Blake2b256::new();
         hasher.update(public_key);
+        hasher.update([0u8; 1]);
         let address = hasher.finalize().into();
 
         Self {
