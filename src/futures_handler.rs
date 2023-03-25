@@ -9,6 +9,23 @@ use anyhow::{anyhow, Result};
 use base58::ToBase58;
 use libp2p::{gossipsub, request_response::ResponseChannel, Swarm};
 
+pub fn sync_blocks(state: &State, swarm: &mut Swarm<Behaviour>) -> Result<()> {
+    if let Some(peer_id) = swarm.connected_peers().last().cloned() {
+        let data = bincode::serialize(&state.last_header.height)
+            .map_err(|error| anyhow!("Failed to serialize height for sync: {error:?}"))?;
+        let sync_request = SyncRequest(data);
+
+        swarm
+            .behaviour_mut()
+            .request_response
+            .send_request(&peer_id, sync_request);
+    } else {
+        log::warn!("Failed to get peer");
+    }
+
+    Ok(())
+}
+
 pub fn mining_handler(
     state: &mut State,
     swarm: &mut Swarm<Behaviour>,
@@ -44,23 +61,6 @@ pub fn mining_handler(
             }
         }
         Err(error) => log::trace!("Mining failed: {error:?}"),
-    }
-
-    Ok(())
-}
-
-pub fn sync_blocks(state: &State, swarm: &mut Swarm<Behaviour>) -> Result<()> {
-    if let Some(peer_id) = swarm.connected_peers().last().cloned() {
-        let data = bincode::serialize(&state.last_header.height)
-            .map_err(|error| anyhow!("Failed to serialize height for sync: {error:?}"))?;
-        let sync_request = SyncRequest(data);
-
-        swarm
-            .behaviour_mut()
-            .request_response
-            .send_request(&peer_id, sync_request);
-    } else {
-        log::warn!("Failed to get peer");
     }
 
     Ok(())
