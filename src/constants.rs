@@ -12,6 +12,9 @@ pub const EMPTY_SIGNATURE: Signature = [0u8; 64];
 /// RandomX change key
 pub const RANDOMX_CHANGE_KEY: u64 = 8640;
 
+/// Lwma-1 number of blocks
+pub const LWMA_NUMBER_BLOCKS: u64 = 50;
+
 /// Swarm topics
 pub const BLOCK_TOPIC: &str = "block";
 pub const TRANSACTION_TOPIC: &str = "transaction";

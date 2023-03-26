@@ -1,8 +1,8 @@
-use crate::{primitive::*, state::State};
+use crate::{block::Header, constants::*, primitive::*};
 use anyhow::{anyhow, Result};
 
 const T: u64 = 15000;
-const N: u64 = 50;
+const N: u64 = LWMA_NUMBER_BLOCKS;
 
 pub struct Lwma1 {
     k: u64,
@@ -33,10 +33,8 @@ impl Lwma1 {
         Self::u256_to_u32(self.target)
     }
 
-    pub fn calculate(&mut self, state: &State) -> Result<()> {
-        let height = state.last_header.height;
-
-        if height < N {
+    pub fn calculate(&mut self, headers: Vec<Header>) -> Result<()> {
+        if headers.len() as u64 <= N {
             self.target = self.pow_limit;
             return Ok(());
         }
@@ -46,16 +44,12 @@ impl Lwma1 {
         let mut sum_weighted_solvetimes: u128 = 0;
         let mut j: u128 = 0;
 
-        let block_previous = state.get_block(height - N)?;
-        let mut previous_timestamp = block_previous.header.timestamp;
+        let mut previous_timestamp = headers[0].timestamp;
         let mut this_timestamp;
 
-        let mut i = height - N + 1;
-        while i <= height {
-            let block = state.get_block(i)?;
-
-            this_timestamp = if block.header.timestamp > previous_timestamp {
-                block.header.timestamp
+        for header in headers.iter().skip(1) {
+            this_timestamp = if header.timestamp > previous_timestamp {
+                header.timestamp
             } else {
                 previous_timestamp + 1
             };
@@ -66,10 +60,8 @@ impl Lwma1 {
             j += 1;
             sum_weighted_solvetimes += solve_time * j;
 
-            let target = Self::u32_to_u256(block.header.n_bits)?;
+            let target = Self::u32_to_u256(header.n_bits)?;
             avg_target += target / N / self.k;
-
-            i += 1;
         }
 
         self.target = avg_target * U256::from(sum_weighted_solvetimes);

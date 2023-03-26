@@ -67,6 +67,24 @@ impl Database {
         Ok(self.get_block_header_from_hash(hash)?)
     }
 
+    pub fn get_block_headers_from_height(&self, height: u64, count: u64) -> Result<Vec<Header>> {
+        let keys = (height - count..height + 1)
+            .map(|item| item.to_le_bytes())
+            .collect::<Vec<[u8; 8]>>()
+            .concat();
+        let hashes = self.get_multi(BLOCK_HEADERS_HASH, keys.chunks(8).collect())?;
+
+        let mut headers = vec![];
+        for bytes in self.get_multi(BLOCK_HEADERS, hashes.concat().chunks(32).collect())? {
+            let header: Header = bincode::deserialize(&bytes[..])
+                .map_err(|error| anyhow!("Failed to deserialize header: {error:?}"))?;
+
+            headers.push(header);
+        }
+
+        Ok(headers)
+    }
+
     pub fn get_last_block_header(&self) -> Result<Header> {
         let bytes = self.get(INFO, b"last_header")?;
 

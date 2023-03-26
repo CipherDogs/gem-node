@@ -1,4 +1,5 @@
 use blake2::{digest::consts::U32, Blake2b};
+use clap::ValueEnum;
 use ed25519_dalek::{PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH, SIGNATURE_LENGTH};
 use uint::construct_uint;
 
@@ -14,3 +15,9 @@ pub type Hash = [u8; 32];
 pub type Signature = [u8; SIGNATURE_LENGTH];
 
 pub type Blake2b256 = Blake2b<U32>;
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum Network {
+    Testnet,
+    Mainnet,
+}
