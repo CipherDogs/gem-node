@@ -26,6 +26,7 @@ pub fn sync_blocks(state: &State, swarm: &mut Swarm<Behaviour>) -> Result<()> {
     Ok(())
 }
 
+/// New mined block handler
 pub fn mining_handler(
     state: &mut State,
     swarm: &mut Swarm<Behaviour>,
@@ -66,6 +67,7 @@ pub fn mining_handler(
     Ok(())
 }
 
+/// Incoming request handler
 pub fn sync_request(
     state: &State,
     swarm: &mut Swarm<Behaviour>,
@@ -109,6 +111,7 @@ pub fn sync_request(
     Ok(())
 }
 
+/// Incoming response handler
 pub fn sync_response(state: &mut State, response: SyncResponse) -> Result<()> {
     if let Ok(blocks) = bincode::deserialize::<Vec<Block>>(response.0.as_slice()) {
         for block in blocks {
@@ -122,6 +125,7 @@ pub fn sync_response(state: &mut State, response: SyncResponse) -> Result<()> {
     Ok(())
 }
 
+/// Gossipsub message handler
 pub fn gossipsub_handler(state: &mut State, message: gossipsub::Message) -> Result<()> {
     match message.topic.as_str() {
         BLOCK_TOPIC => {

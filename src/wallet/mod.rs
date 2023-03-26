@@ -9,7 +9,7 @@ use std::{
     io::{Read, Write},
 };
 
-// Keypair and account generation
+/// Keypair and account generation
 pub fn generate() -> (SecretKey, PublicKey) {
     let keypair = generate_keypair();
 
