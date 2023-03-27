@@ -149,6 +149,10 @@ impl RandomXVMInstance {
     }
 }
 
+#[allow(clippy::non_send_fields_in_send_ty)]
+unsafe impl Send for RandomXVMInstance {}
+unsafe impl Sync for RandomXVMInstance {}
+
 #[cfg(test)]
 mod test {
     use super::*;

@@ -1,6 +1,6 @@
 use crate::{
     account::Account,
-    block::Header,
+    block::{Block, Header},
     constants::*,
     primitive::*,
     transaction::{Transaction, Transactions},
@@ -123,6 +123,16 @@ impl Database {
         }
 
         Ok(transactions)
+    }
+
+    pub fn get_block(&self, height: u64) -> Result<Block> {
+        let header = self.get_block_header_from_height(height)?;
+        let transactions = self.get_block_transactions(header.hash())?;
+
+        Ok(Block {
+            header,
+            transactions,
+        })
     }
 
     pub fn put_transaction(&self, batch: &mut WriteBatch, transaction: &Transaction) -> Result<()> {

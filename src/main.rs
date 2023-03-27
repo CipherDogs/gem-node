@@ -1,4 +1,7 @@
-use async_std::stream;
+use async_std::{
+    stream,
+    sync::{Arc, RwLock},
+};
 use base58::ToBase58;
 use clap::Parser;
 use gem_node::{
@@ -26,9 +29,9 @@ struct Args {
     #[arg(long, value_enum, default_value_t = Network::Testnet)]
     network: Network,
     #[arg(long, default_value_t = String::from("127.0.0.1"))]
-    api_address: String,
+    rpc_address: String,
     #[arg(long, default_value_t = 31337)]
-    api_port: u16,
+    rpc_port: u16,
     #[arg(long, default_value_t = false)]
     generate_keys: bool,
     #[arg(long, default_value_t = String::new())]
@@ -50,7 +53,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Initializing blockchain state
     let db_path = format!("{}/data", args.directory);
-    let mut state = State::new(&db_path, args.network)?;
+    let state = Arc::new(RwLock::new(State::new(&db_path, args.network)?));
 
     // Generating or importing keys
     let wallet_path = format!("{}/wallet.dat", args.directory);
@@ -80,10 +83,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         select! {
-            _ = sync_interval.next().fuse() => if let Err(error) = sync_blocks(&state, &mut swarm) {
+            _ = sync_interval.next().fuse() => if let Err(error) = sync_blocks(state.clone(), &mut swarm).await {
                 log::error!("Sync failed: {error:?}");
             },
-            result = miner::trying(&state, &secret_key, &public_key, args.mining).fuse() => mining_handler(&mut state, &mut swarm, result)?,
+            result = miner::trying(state.clone(), &secret_key, &public_key, args.mining).fuse() => mining_handler(state.clone(), &mut swarm, result).await?,
             event = swarm.select_next_some() => match event {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     log::info!("Swarm listening on {address:?}");
@@ -107,10 +110,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
                 },
                 SwarmEvent::Behaviour(BehaviourEvent::RequestResponse(request_response::Event::Message { message, .. })) => match message {
-                    request_response::Message::Request { request, channel, .. } => if let Err(error) = sync_request(&state, &mut swarm, request, channel) {
+                    request_response::Message::Request { request, channel, .. } => if let Err(error) = sync_request(state.clone(), &mut swarm, request, channel).await {
                         log::trace!("Sync request failed: {error:?}");
                     },
-                    request_response::Message::Response { response, .. } => if let Err(error) = sync_response(&mut state, response) {
+                    request_response::Message::Response { response, .. } => if let Err(error) = sync_response(state.clone(), response).await {
                         log::trace!("Sync response failed: {error:?}");
                     },
                 },
@@ -118,7 +121,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     propagation_source: peer_id,
                     message,
                     ..
-                })) => if let Err(error) = gossipsub_handler(&mut state, message) {
+                })) => if let Err(error) = gossipsub_handler(state.clone(), message).await {
                     log::trace!("Gossipsub failed: {error:?}");
                 },
                 _ => {}

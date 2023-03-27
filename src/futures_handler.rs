@@ -6,10 +6,13 @@ use crate::{
     transaction::Transaction,
 };
 use anyhow::{anyhow, Result};
+use async_std::sync::{Arc, RwLock};
 use base58::ToBase58;
 use libp2p::{gossipsub, request_response::ResponseChannel, Swarm};
 
-pub fn sync_blocks(state: &State, swarm: &mut Swarm<Behaviour>) -> Result<()> {
+pub async fn sync_blocks(state: Arc<RwLock<State>>, swarm: &mut Swarm<Behaviour>) -> Result<()> {
+    let state = state.read().await;
+
     if let Some(peer_id) = swarm.connected_peers().last().cloned() {
         let data = bincode::serialize(&state.last_header.height)
             .map_err(|error| anyhow!("Failed to serialize height for sync: {error:?}"))?;
@@ -27,11 +30,13 @@ pub fn sync_blocks(state: &State, swarm: &mut Swarm<Behaviour>) -> Result<()> {
 }
 
 /// New mined block handler
-pub fn mining_handler(
-    state: &mut State,
+pub async fn mining_handler(
+    state: Arc<RwLock<State>>,
     swarm: &mut Swarm<Behaviour>,
     result: Result<Block>,
 ) -> Result<()> {
+    let mut state = state.write().await;
+
     match result {
         Ok(block) => {
             log::info!(
@@ -68,12 +73,14 @@ pub fn mining_handler(
 }
 
 /// Incoming request handler
-pub fn sync_request(
-    state: &State,
+pub async fn sync_request(
+    state: Arc<RwLock<State>>,
     swarm: &mut Swarm<Behaviour>,
     request: SyncRequest,
     channel: ResponseChannel<SyncResponse>,
 ) -> Result<()> {
+    let state = state.read().await;
+
     let mut height: u64 = bincode::deserialize(&request.0)
         .map_err(|error| anyhow!("Failed to deserialize height for sync: {error:?}"))?;
 
@@ -84,7 +91,7 @@ pub fn sync_request(
         loop {
             height += 1;
 
-            if let Ok(block) = state.get_block(height) {
+            if let Ok(block) = state.database.get_block(height) {
                 size += bincode::serialize(&block)?.len();
                 if size > MAX_TRANSMIT_SIZE {
                     break;
@@ -112,7 +119,9 @@ pub fn sync_request(
 }
 
 /// Incoming response handler
-pub fn sync_response(state: &mut State, response: SyncResponse) -> Result<()> {
+pub async fn sync_response(state: Arc<RwLock<State>>, response: SyncResponse) -> Result<()> {
+    let mut state = state.write().await;
+
     if let Ok(blocks) = bincode::deserialize::<Vec<Block>>(response.0.as_slice()) {
         for block in blocks {
             log::info!("New block received: {}", block.header.height);
@@ -126,7 +135,12 @@ pub fn sync_response(state: &mut State, response: SyncResponse) -> Result<()> {
 }
 
 /// Gossipsub message handler
-pub fn gossipsub_handler(state: &mut State, message: gossipsub::Message) -> Result<()> {
+pub async fn gossipsub_handler(
+    state: Arc<RwLock<State>>,
+    message: gossipsub::Message,
+) -> Result<()> {
+    let mut state = state.write().await;
+
     match message.topic.as_str() {
         BLOCK_TOPIC => {
             let block = bincode::deserialize::<Block>(&message.data)
