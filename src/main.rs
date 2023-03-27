@@ -9,10 +9,12 @@ use gem_node::{
     futures_handler::*,
     pow::miner,
     primitive::*,
+    rpc::{Rpc, RpcHandler},
     state::State,
     swarm::{self, behaviour::BehaviourEvent},
     wallet,
 };
+use jsonrpc_http_server::{jsonrpc_core::IoHandler, ServerBuilder};
 use libp2p::{
     futures::{select, FutureExt, StreamExt},
     gossipsub, identify, mdns, request_response,
@@ -78,6 +80,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Initializing libp2p Swarm
     let mut swarm = swarm::init().await?;
     swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+
+    let mut io = IoHandler::default();
+    let rpc = RpcHandler::new(state.clone());
+    io.extend_with(rpc.to_delegate());
+
+    let rpc_addr = format!("{}:{}", args.rpc_address, args.rpc_port);
+    let _server = ServerBuilder::new(io)
+        .threads(1)
+        .start_http(&rpc_addr.parse()?)?;
 
     let mut sync_interval = stream::interval(Duration::from_secs(30));
 
