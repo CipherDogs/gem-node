@@ -91,7 +91,7 @@ pub async fn sync_request(
         loop {
             height += 1;
 
-            if let Ok(block) = state.database.get_block(height) {
+            if let Ok(block) = state.database.get_block_from_height(height) {
                 size += bincode::serialize(&block)?.len();
                 if size > MAX_TRANSMIT_SIZE {
                     break;

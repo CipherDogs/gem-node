@@ -64,7 +64,7 @@ impl Database {
         let mut hash = EMPTY_HASH;
         hash.copy_from_slice(bytes.as_slice());
 
-        Ok(self.get_block_header_from_hash(hash)?)
+        self.get_block_header_from_hash(hash)
     }
 
     pub fn get_block_headers_from_height(&self, height: u64, count: u64) -> Result<Vec<Header>> {
@@ -91,7 +91,7 @@ impl Database {
         let mut hash = EMPTY_HASH;
         hash.copy_from_slice(bytes.as_slice());
 
-        Ok(self.get_block_header_from_hash(hash)?)
+        self.get_block_header_from_hash(hash)
     }
 
     pub fn put_block_transactions(
@@ -125,7 +125,17 @@ impl Database {
         Ok(transactions)
     }
 
-    pub fn get_block(&self, height: u64) -> Result<Block> {
+    pub fn get_block_from_hash(&self, hash: Hash) -> Result<Block> {
+        let header = self.get_block_header_from_hash(hash)?;
+        let transactions = self.get_block_transactions(header.hash())?;
+
+        Ok(Block {
+            header,
+            transactions,
+        })
+    }
+
+    pub fn get_block_from_height(&self, height: u64) -> Result<Block> {
         let header = self.get_block_header_from_height(height)?;
         let transactions = self.get_block_transactions(header.hash())?;
 
@@ -181,7 +191,7 @@ impl Database {
         let mut public_key = EMPTY_PUBLIC_KEY;
         public_key.copy_from_slice(bytes.as_slice());
 
-        Ok(self.get_account_from_public_key(public_key)?)
+        self.get_account_from_public_key(public_key)
     }
 
     pub fn put_account_transactions(

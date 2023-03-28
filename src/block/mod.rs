@@ -25,6 +25,7 @@ pub struct Header {
     pub reward: u64,
     pub root: Hash,
     pub transactions_count: u64,
+    pub pow_hash: Hash,
     pub n_bits: u32,
     pub nonce: u64,
     #[serde(with = "BigArray")]
@@ -50,6 +51,7 @@ impl Header {
             reward,
             root,
             transactions_count,
+            pow_hash: EMPTY_HASH,
             n_bits: 0,
             nonce: 0,
             signature: EMPTY_SIGNATURE,
@@ -67,13 +69,14 @@ impl Header {
     }
 
     /// Block header PoW hash calculation
-    pub fn pow_hash(&self, randomx_vm: &RandomXVMInstance) -> Result<Hash> {
-        let mut hash = EMPTY_HASH;
-
+    pub fn pow_hash(&mut self, randomx_vm: &RandomXVMInstance) -> Result<()> {
         let bytes = randomx_vm.calculate_hash(&self.hash())?;
-        hash.copy_from_slice(bytes.as_slice());
 
-        Ok(hash)
+        let mut hash = EMPTY_HASH;
+        hash.copy_from_slice(bytes.as_slice());
+        self.pow_hash = hash;
+
+        Ok(())
     }
 
     /// Signing a block header with a private key
