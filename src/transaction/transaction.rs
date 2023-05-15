@@ -84,12 +84,12 @@ impl Cryptography for Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{account::Account, wallet};
+    use crate::{account::Account, primitive::Network, wallet};
 
     #[test]
     fn signature_verify() {
         let (secret_key, public_key) = wallet::generate();
-        let account = Account::from_public_key(public_key);
+        let account = Account::from_public_key(public_key, Network::Testnet);
 
         let data = Data::RotatePublicKey {
             public_key: EMPTY_PUBLIC_KEY,
@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn transfer() {
         let (_, public_key) = wallet::generate();
-        let account = Account::from_public_key(public_key);
+        let account = Account::from_public_key(public_key, Network::Testnet);
 
         let data = Data::Transfer {
             recipient: account.address,

@@ -97,7 +97,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             _ = sync_interval.next().fuse() => if let Err(error) = sync_blocks(state.clone(), &mut swarm).await {
                 log::error!("Sync failed: {error:?}");
             },
-            result = miner::trying(state.clone(), &secret_key, &public_key, args.mining).fuse() => mining_handler(state.clone(), &mut swarm, result).await?,
+            result = miner::trying(state.clone(), &secret_key, &public_key, args.network, args.mining).fuse() => mining_handler(state.clone(), &mut swarm, result).await?,
             event = swarm.select_next_some() => match event {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     log::info!("Swarm listening on {address:?}");

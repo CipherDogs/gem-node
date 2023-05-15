@@ -2,6 +2,8 @@ use crate::primitive::*;
 
 pub const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+pub const ADDRESS_PREFIX: u8 = 0xed;
+
 /// Empty primitives
 pub const EMPTY_ADDRESS: Address = [0u8; 32];
 pub const EMPTY_HASH: Hash = [0u8; 32];

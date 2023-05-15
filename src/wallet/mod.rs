@@ -1,4 +1,4 @@
-use crate::{account::Account, primitive::*};
+use crate::primitive::*;
 use anyhow::{anyhow, Result};
 use argon2::{Algorithm, Argon2, ParamsBuilder, Version};
 use base58::{FromBase58, ToBase58};
@@ -16,11 +16,8 @@ pub fn generate() -> (SecretKey, PublicKey) {
     let secret_key = keypair.secret.to_bytes();
     let public_key = keypair.public.to_bytes();
 
-    let account = Account::from_public_key(public_key);
-
     println!("Secret key: {}", secret_key.to_base58());
     println!("Public key: {}", public_key.to_base58());
-    println!("Address: {}", account.address.to_base58());
 
     (secret_key, public_key)
 }
