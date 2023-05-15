@@ -1,5 +1,6 @@
 use crate::{
     block::Block,
+    primitive::*,
     rpc::RpcError,
     transaction::{Data, Transaction},
 };
@@ -27,6 +28,11 @@ pub struct BlockResponse {
 
 impl BlockResponse {
     pub fn from_block(block: &Block) -> Result<Self> {
+        let id = block
+            .header
+            .hash()
+            .map_err(|_| RpcError::HashCalculate.to_error())?;
+
         let mut transactions = vec![];
         for transaction in &block.transactions.0 {
             let transaction_response = TransactionResponse::from_transaction(transaction)?;
@@ -34,7 +40,7 @@ impl BlockResponse {
         }
 
         Ok(Self {
-            id: block.header.hash().to_base58(),
+            id: id.to_base58(),
             pow_hash: block.header.pow_hash.to_base58(),
             height: block.header.height,
             timestamp: block.header.timestamp,

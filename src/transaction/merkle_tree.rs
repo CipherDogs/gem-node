@@ -87,12 +87,13 @@ mod tests {
 
     #[test]
     fn verify_one_transactions() {
+        let (secret_key, public_key) = wallet::generate();
+
         let data = Data::RotatePublicKey {
             public_key: EMPTY_PUBLIC_KEY,
         };
-        let mut transaction = Transaction::new(EMPTY_ADDRESS, 0, 1024, 0, data);
 
-        let (secret_key, _) = wallet::generate();
+        let mut transaction = Transaction::new(EMPTY_ADDRESS, public_key, 0, 1024, 0, data);
         transaction.sign(&secret_key).unwrap();
 
         let mut transactions = Transactions::default();

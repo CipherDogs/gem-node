@@ -1,6 +1,7 @@
 use crate::{
     block::Block,
     constants::*,
+    primitive::*,
     state::State,
     swarm::behaviour::{Behaviour, SyncRequest, SyncResponse},
     transaction::Transaction,

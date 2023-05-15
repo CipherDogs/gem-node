@@ -3,9 +3,7 @@ pub mod genesis;
 use crate::{
     constants::*, pow::randomx::RandomXVMInstance, primitive::*, transaction::Transactions,
 };
-use anyhow::{anyhow, Result};
-use blake2::Digest;
-use ed25519_dalek::Signer;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 
@@ -38,6 +36,7 @@ impl Header {
         timestamp: u128,
         prev_block: Hash,
         generator: Address,
+        generator_public_key: PublicKey,
         reward: u64,
         root: Hash,
         transactions_count: u64,
@@ -47,7 +46,7 @@ impl Header {
             timestamp,
             prev_block,
             generator,
-            generator_public_key: EMPTY_PUBLIC_KEY,
+            generator_public_key,
             reward,
             root,
             transactions_count,
@@ -58,19 +57,9 @@ impl Header {
         }
     }
 
-    /// Block header hash calculation
-    pub fn hash(&self) -> Hash {
-        let mut hasher = Blake2b256::new();
-
-        let bytes = self.to_vec_bytes();
-        hasher.update(bytes.as_slice());
-
-        hasher.finalize().into()
-    }
-
     /// Block header PoW hash calculation
     pub fn pow_hash(&mut self, randomx_vm: &RandomXVMInstance) -> Result<()> {
-        let bytes = randomx_vm.calculate_hash(&self.hash())?;
+        let bytes = randomx_vm.calculate_hash(&self.hash()?)?;
 
         let mut hash = EMPTY_HASH;
         hash.copy_from_slice(bytes.as_slice());
@@ -78,44 +67,22 @@ impl Header {
 
         Ok(())
     }
+}
 
-    /// Signing a block header with a private key
-    pub fn sign(&mut self, secret_key: &SecretKey) -> Result<()> {
-        let secret_key = ed25519_dalek::SecretKey::from_bytes(secret_key.as_slice())
-            .map_err(|error| anyhow!("Secret key serialization failed: {error:?}"))?;
-
-        let public_key = ed25519_dalek::PublicKey::from(&secret_key);
-        self.generator_public_key = public_key.to_bytes();
-
-        let keypair = ed25519_dalek::Keypair {
-            secret: secret_key,
-            public: public_key,
-        };
-
-        let message = self.to_vec_bytes();
-
-        let signature = keypair.try_sign(message.as_slice())?;
-        self.signature = signature.to_bytes();
-
-        Ok(())
+impl Cryptography for Header {
+    fn signer_public_key(&self) -> PublicKey {
+        self.generator_public_key
     }
 
-    /// Block header signature verification
-    pub fn signature_verify(&self) -> Result<()> {
-        let public_key = ed25519_dalek::PublicKey::from_bytes(&self.generator_public_key)
-            .map_err(|error| anyhow!("Public key serialization failed: {error:?}"))?;
-
-        let message = self.to_vec_bytes();
-
-        let signature = ed25519_dalek::Signature::from_bytes(&self.signature)
-            .map_err(|error| anyhow!("Signature serialization failed: {error:?}"))?;
-
-        public_key
-            .verify_strict(message.as_slice(), &signature)
-            .map_err(|error| anyhow!("Block has no valid signature: {error:?}"))
+    fn signature(&self) -> Signature {
+        self.signature
     }
 
-    fn to_vec_bytes(&self) -> Vec<u8> {
+    fn update_signature(&mut self, signature: Signature) {
+        self.signature = signature
+    }
+
+    fn as_data_for_signing(&self) -> Result<Vec<u8>> {
         let mut bytes: Vec<u8> = vec![];
 
         bytes.extend_from_slice(&self.height.to_le_bytes());
@@ -129,20 +96,30 @@ impl Header {
         bytes.extend_from_slice(&self.n_bits.to_le_bytes());
         bytes.extend_from_slice(&self.nonce.to_le_bytes());
 
-        bytes
+        Ok(bytes)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::wallet;
+    use crate::{account::Account, wallet};
 
     #[test]
     fn signature_verify() {
-        let mut header = Header::new(0, 0, EMPTY_HASH, EMPTY_ADDRESS, 1024, EMPTY_HASH, 0);
+        let (secret_key, public_key) = wallet::generate();
+        let account = Account::from_public_key(public_key);
 
-        let (secret_key, _) = wallet::generate();
+        let mut header = Header::new(
+            0,
+            0,
+            EMPTY_HASH,
+            account.address,
+            public_key,
+            1024,
+            EMPTY_HASH,
+            0,
+        );
         header.sign(&secret_key).unwrap();
 
         assert!(header.signature_verify().is_ok());

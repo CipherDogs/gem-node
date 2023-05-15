@@ -1,7 +1,11 @@
+mod cryptography;
+
 use blake2::{digest::consts::U32, Blake2b};
 use clap::ValueEnum;
 use ed25519_dalek::{PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH, SIGNATURE_LENGTH};
 use uint::construct_uint;
+
+pub use cryptography::*;
 
 construct_uint! {
     pub struct U256(4);

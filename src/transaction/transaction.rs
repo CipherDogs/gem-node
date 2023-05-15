@@ -1,7 +1,5 @@
 use crate::{constants::*, primitive::*, transaction::Data};
 use anyhow::{anyhow, Result};
-use blake2::Digest;
-use ed25519_dalek::Signer;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 
@@ -21,6 +19,7 @@ pub struct Transaction {
 impl Transaction {
     pub fn new(
         sender: Address,
+        sender_public_key: PublicKey,
         sequence_number: u64,
         fee: u64,
         timestamp: u128,
@@ -28,7 +27,7 @@ impl Transaction {
     ) -> Self {
         Self {
             sender,
-            sender_public_key: EMPTY_PUBLIC_KEY,
+            sender_public_key,
             sequence_number,
             fee,
             timestamp,
@@ -49,54 +48,22 @@ impl Transaction {
             _ => 0,
         }
     }
+}
 
-    /// Transaction hash calculation
-    pub fn hash(&self) -> Result<Hash> {
-        let mut hasher = Blake2b256::new();
-
-        let bytes = self.to_vec_bytes()?;
-        hasher.update(bytes.as_slice());
-
-        Ok(hasher.finalize().into())
+impl Cryptography for Transaction {
+    fn signer_public_key(&self) -> PublicKey {
+        self.sender_public_key
     }
 
-    /// Signing a transaction with a private key
-    pub fn sign(&mut self, secret_key: &SecretKey) -> Result<()> {
-        let secret_key = ed25519_dalek::SecretKey::from_bytes(secret_key.as_slice())
-            .map_err(|error| anyhow!("Secret key serialization failed: {error:?}"))?;
-
-        let public_key = ed25519_dalek::PublicKey::from(&secret_key);
-        self.sender_public_key = public_key.to_bytes();
-
-        let keypair = ed25519_dalek::Keypair {
-            secret: secret_key,
-            public: public_key,
-        };
-
-        let message = self.to_vec_bytes()?;
-
-        let signature = keypair.try_sign(message.as_slice())?;
-        self.signature = signature.to_bytes();
-
-        Ok(())
+    fn signature(&self) -> Signature {
+        self.signature
     }
 
-    /// Transaction signature verification
-    pub fn signature_verify(&self) -> Result<()> {
-        let public_key = ed25519_dalek::PublicKey::from_bytes(&self.sender_public_key)
-            .map_err(|error| anyhow!("Public key serialization failed: {error:?}"))?;
-
-        let message = self.to_vec_bytes()?;
-
-        let signature = ed25519_dalek::Signature::from_bytes(&self.signature)
-            .map_err(|error| anyhow!("Signature serialization failed: {error:?}"))?;
-
-        public_key
-            .verify_strict(message.as_slice(), &signature)
-            .map_err(|error| anyhow!("Transaction has no valid signature: {error:?}"))
+    fn update_signature(&mut self, signature: Signature) {
+        self.signature = signature
     }
 
-    fn to_vec_bytes(&self) -> Result<Vec<u8>> {
+    fn as_data_for_signing(&self) -> Result<Vec<u8>> {
         let mut bytes: Vec<u8> = vec![];
 
         bytes.extend_from_slice(&self.sender);
@@ -121,12 +88,14 @@ mod tests {
 
     #[test]
     fn signature_verify() {
+        let (secret_key, public_key) = wallet::generate();
+        let account = Account::from_public_key(public_key);
+
         let data = Data::RotatePublicKey {
             public_key: EMPTY_PUBLIC_KEY,
         };
-        let mut transaction = Transaction::new(EMPTY_ADDRESS, 0, 1024, 0, data);
 
-        let (secret_key, _) = wallet::generate();
+        let mut transaction = Transaction::new(account.address, public_key, 0, 1024, 0, data);
         transaction.sign(&secret_key).unwrap();
 
         assert!(transaction.signature_verify().is_ok());
@@ -137,7 +106,7 @@ mod tests {
         let data = Data::RotatePublicKey {
             public_key: EMPTY_PUBLIC_KEY,
         };
-        let transaction = Transaction::new(EMPTY_ADDRESS, 0, 1024, 0, data);
+        let transaction = Transaction::new(EMPTY_ADDRESS, EMPTY_PUBLIC_KEY, 0, 1024, 0, data);
 
         assert_eq!(transaction.type_id(), 1);
         assert_eq!(transaction.amount(), 0);
@@ -153,7 +122,7 @@ mod tests {
             amount: 1024,
             attachment: String::from("test"),
         };
-        let transaction = Transaction::new(EMPTY_ADDRESS, 0, 1024, 0, data);
+        let transaction = Transaction::new(EMPTY_ADDRESS, EMPTY_PUBLIC_KEY, 0, 1024, 0, data);
 
         assert_eq!(transaction.type_id(), 2);
         assert_eq!(transaction.amount(), 1024);

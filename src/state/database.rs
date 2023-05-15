@@ -38,14 +38,14 @@ impl Database {
         let value = bincode::serialize(&header)
             .map_err(|error| anyhow!("Failed to serialize header: {error:?}"))?;
 
-        self.put_batch(batch, BLOCK_HEADERS, &header.hash(), &value)?;
+        self.put_batch(batch, BLOCK_HEADERS, &header.hash()?, &value)?;
         self.put_batch(
             batch,
             BLOCK_HEADERS_HASH,
             &header.height.to_le_bytes(),
-            &header.hash(),
+            &header.hash()?,
         )?;
-        self.put_batch(batch, INFO, b"last_header", &header.hash())?;
+        self.put_batch(batch, INFO, b"last_header", &header.hash()?)?;
 
         Ok(())
     }
@@ -127,7 +127,7 @@ impl Database {
 
     pub fn get_block_from_hash(&self, hash: Hash) -> Result<Block> {
         let header = self.get_block_header_from_hash(hash)?;
-        let transactions = self.get_block_transactions(header.hash())?;
+        let transactions = self.get_block_transactions(header.hash()?)?;
 
         Ok(Block {
             header,
@@ -137,7 +137,7 @@ impl Database {
 
     pub fn get_block_from_height(&self, height: u64) -> Result<Block> {
         let header = self.get_block_header_from_height(height)?;
-        let transactions = self.get_block_transactions(header.hash())?;
+        let transactions = self.get_block_transactions(header.hash()?)?;
 
         Ok(Block {
             header,
