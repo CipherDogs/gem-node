@@ -9,12 +9,13 @@ use crate::{
 use anyhow::{anyhow, Result};
 use async_std::sync::{Arc, RwLock};
 use base58::ToBase58;
-use libp2p::{gossipsub, request_response::ResponseChannel, Swarm};
+use libp2p::{gossipsub, request_response::ResponseChannel, swarm::Swarm, PeerId};
+use rand::prelude::*;
 
 pub async fn sync_blocks(state: Arc<RwLock<State>>, swarm: &mut Swarm<Behaviour>) -> Result<()> {
     let state = state.read().await;
 
-    if let Some(peer_id) = swarm.connected_peers().last().cloned() {
+    if let Some(peer_id) = swarm.connected_peers().choose(&mut thread_rng()).cloned() {
         let data = bincode::serialize(&state.last_header.height)
             .map_err(|error| anyhow!("Failed to serialize height for sync: {error:?}"))?;
         let sync_request = SyncRequest(data);
@@ -67,7 +68,8 @@ pub async fn mining_handler(
                 log::warn!("Gossipsub publish failed: {error:?}");
             }
         }
-        Err(error) => log::trace!("Mining failed: {error:?}"),
+        // Err(error) => log::trace!("Mining failed: {error:?}"), // TODO
+        Err(_) => {}
     }
 
     Ok(())
@@ -84,6 +86,10 @@ pub async fn sync_request(
 
     let mut height: u64 = bincode::deserialize(&request.0)
         .map_err(|error| anyhow!("Failed to deserialize height for sync: {error:?}"))?;
+    log::trace!(
+        "Received synchronization request. Received height: {}",
+        height
+    );
 
     if state.last_header.height > height {
         let mut size = 0;
@@ -107,10 +113,22 @@ pub async fn sync_request(
         let data = bincode::serialize(&blocks)
             .map_err(|error| anyhow!("Failed to serialize blocks: {error:?}"))?;
 
+        log::trace!("Prepared blocks for response: {}", height - 1);
+
         if let Err(error) = swarm
             .behaviour_mut()
             .request_response
             .send_response(channel, SyncResponse(data))
+        {
+            log::warn!("Send response failed: {error:?}");
+        }
+    } else {
+        log::trace!("The resulting height is the last available");
+
+        if let Err(error) = swarm
+            .behaviour_mut()
+            .request_response
+            .send_response(channel, SyncResponse(vec![]))
         {
             log::warn!("Send response failed: {error:?}");
         }
@@ -120,16 +138,36 @@ pub async fn sync_request(
 }
 
 /// Incoming response handler
-pub async fn sync_response(state: Arc<RwLock<State>>, response: SyncResponse) -> Result<()> {
+pub async fn sync_response(
+    state: Arc<RwLock<State>>,
+    swarm: &mut Swarm<Behaviour>,
+    peer: PeerId,
+    response: SyncResponse,
+) -> Result<()> {
     let mut state = state.write().await;
 
     if let Ok(blocks) = bincode::deserialize::<Vec<Block>>(response.0.as_slice()) {
+        log::trace!(
+            "A synchronization response is received. Number of blocks received: {}",
+            blocks.len()
+        );
+
         for block in blocks {
             log::info!("New block received: {}", block.header.height);
-            if let Err(error) = state.put_block(&block) {
-                log::warn!("Put block failed: {error:?}");
+
+            if let Ok(()) = state.block_validation(&block) {
+                if let Err(error) = state.put_block(&block) {
+                    log::warn!("Put block failed: {error:?}");
+                }
+            } else {
+                swarm.ban_peer_id(peer);
+                log::warn!("Peer is banned for providing invalid block: {}", peer.to_base58())
             }
         }
+
+        state.is_sync = false;
+    } else {
+        state.is_sync = true;
     }
 
     Ok(())
@@ -138,31 +176,52 @@ pub async fn sync_response(state: Arc<RwLock<State>>, response: SyncResponse) ->
 /// Gossipsub message handler
 pub async fn gossipsub_handler(
     state: Arc<RwLock<State>>,
+    swarm: &mut Swarm<Behaviour>,
     message: gossipsub::Message,
 ) -> Result<()> {
     let mut state = state.write().await;
 
-    match message.topic.as_str() {
-        BLOCK_TOPIC => {
-            let block = bincode::deserialize::<Block>(&message.data)
-                .map_err(|error| anyhow!("Failed to deserialize block: {error:?}"))?;
+    if state.is_sync {
+        match message.topic.as_str() {
+            BLOCK_TOPIC => {
+                let block = bincode::deserialize::<Block>(&message.data)
+                    .map_err(|error| anyhow!("Failed to deserialize block: {error:?}"))?;
 
-            log::info!("New block received: {}", block.header.height);
-            if let Err(error) = state.put_block(&block) {
-                log::warn!("Put block failed: {error:?}");
+                log::info!("New block received: {}", block.header.height);
+
+                if let Ok(()) = state.block_validation(&block) {
+                    if let Err(error) = state.put_block(&block) {
+                        log::warn!("Put block failed: {error:?}");
+                    }
+                } else {
+                    if let Some(peer_id) = message.source {
+                        swarm.ban_peer_id(peer_id);
+                        log::warn!("Peer is banned for providing invalid block: {}", peer_id.to_base58())
+                    }
+                }
             }
-        }
-        TRANSACTION_TOPIC => {
-            let transaction = bincode::deserialize::<Transaction>(&message.data)
-                .map_err(|error| anyhow!("Failed to deserialize transaction: {error:?}"))?;
+            TRANSACTION_TOPIC => {
+                let transaction = bincode::deserialize::<Transaction>(&message.data)
+                    .map_err(|error| anyhow!("Failed to deserialize transaction: {error:?}"))?;
 
-            log::info!(
-                "New transaction received: {}",
-                transaction.hash()?.to_base58()
-            );
-            state.put_transaction_mempool(transaction);
+                log::info!(
+                    "New transaction received: {}",
+                    transaction.hash()?.to_base58()
+                );
+
+                if let Ok(()) = state.transaction_validation(&transaction) {
+                    if let Err(error) = state.put_transaction_mempool(transaction) {
+                        log::warn!("Put transaction failed: {error:?}");
+                    }
+                } else {
+                    if let Some(peer_id) = message.source {
+                        swarm.ban_peer_id(peer_id);
+                        log::warn!("Peer is banned for providing invalid transaction: {}", peer_id.to_base58())
+                    }
+                }
+            }
+            _ => {}
         }
-        _ => {}
     }
 
     Ok(())

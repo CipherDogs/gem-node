@@ -75,6 +75,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if args.mining {
         (secret_key, public_key) = wallet::load(&wallet_path)?;
         log::info!("Miner public key: {}", public_key.to_base58());
+    } else {
+        log::warn!("Block mining is disabled by default");
     }
 
     // Initializing libp2p Swarm
@@ -90,7 +92,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .threads(1)
         .start_http(&rpc_addr.parse()?)?;
 
-    let mut sync_interval = stream::interval(Duration::from_secs(30));
+    let mut sync_interval = stream::interval(Duration::from_secs(15));
 
     loop {
         select! {
@@ -120,20 +122,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
                     }
                 },
-                SwarmEvent::Behaviour(BehaviourEvent::RequestResponse(request_response::Event::Message { message, .. })) => match message {
+                SwarmEvent::Behaviour(BehaviourEvent::RequestResponse(request_response::Event::Message { peer, message })) => match message {
                     request_response::Message::Request { request, channel, .. } => if let Err(error) = sync_request(state.clone(), &mut swarm, request, channel).await {
-                        log::trace!("Sync request failed: {error:?}");
+                        log::error!("Sync request failed: {error:?}");
                     },
-                    request_response::Message::Response { response, .. } => if let Err(error) = sync_response(state.clone(), response).await {
-                        log::trace!("Sync response failed: {error:?}");
+                    request_response::Message::Response { response, .. } => if let Err(error) = sync_response(state.clone(), &mut swarm, peer, response).await {
+                        log::error!("Sync response failed: {error:?}");
                     },
                 },
                 SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Message {
-                    propagation_source: peer_id,
                     message,
                     ..
-                })) => if let Err(error) = gossipsub_handler(state.clone(), message).await {
-                    log::trace!("Gossipsub failed: {error:?}");
+                })) => if let Err(error) = gossipsub_handler(state.clone(), &mut swarm, message).await {
+                    log::error!("Gossipsub failed: {error:?}");
                 },
                 _ => {}
             }
