@@ -3,19 +3,19 @@ pub mod behaviour;
 use crate::constants::*;
 use behaviour::Behaviour;
 use libp2p::{
-    core::transport::upgrade::Version, gossipsub, identity, mplex, noise, tcp, PeerId, Swarm,
+    core::transport::upgrade::Version, gossipsub, identity, noise, swarm, tcp, yamux, PeerId,
     Transport,
 };
 use std::{error::Error, time::Duration};
 
-pub async fn init() -> Result<Swarm<Behaviour>, Box<dyn Error>> {
+pub async fn init() -> Result<swarm::Swarm<Behaviour>, Box<dyn Error>> {
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = PeerId::from(local_key.public());
 
     let transport = tcp::async_io::Transport::new(tcp::Config::default().nodelay(true))
         .upgrade(Version::V1)
-        .authenticate(noise::NoiseAuthenticated::xx(&local_key.clone()).unwrap())
-        .multiplex(mplex::MplexConfig::new())
+        .authenticate(noise::Config::new(&local_key.clone()).unwrap())
+        .multiplex(yamux::Config::default())
         .timeout(Duration::from_secs(20))
         .boxed();
 
@@ -28,11 +28,7 @@ pub async fn init() -> Result<Swarm<Behaviour>, Box<dyn Error>> {
         .gossipsub
         .subscribe(&gossipsub::IdentTopic::new(TRANSACTION_TOPIC))?;
 
-    Ok(Swarm::with_async_std_executor(
-        transport,
-        behaviour,
-        local_peer_id,
-    ))
+    Ok(swarm::SwarmBuilder::with_async_std_executor(transport, behaviour, local_peer_id).build())
 }
 
 pub fn protocol_version() -> String {
