@@ -1,4 +1,4 @@
-use crate::{constants::*, primitive::*, transaction::Data};
+use crate::{constants::*, primitive::*, state::State, transaction::Data};
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
@@ -78,6 +78,37 @@ impl Cryptography for Transaction {
         bytes.extend_from_slice(&data);
 
         Ok(bytes)
+    }
+}
+
+impl Validation for Transaction {
+    fn is_valid(&self, state: &State) -> Result<()> {
+        self.signature_verify()?;
+
+        let sender = state
+            .database
+            .get_account_from_public_key(self.sender_public_key)?;
+
+        if sender.address != self.sender {
+            Err(anyhow!(
+                "Received address does not match the sender in the transaction: {sender:?}"
+            ))
+        } else if sender.sequence_number() + 1 == self.sequence_number {
+            Err(anyhow!(
+                "Sequence number does not match the sender number: {sender:?}"
+            ))
+        } else if sender.balance < self.amount() + self.fee {
+            Err(anyhow!(
+                "Sender has insufficient funds to complete the transaction: {sender:?}"
+            ))
+        } else if self.minimum_fee(&self.data) > self.fee {
+            Err(anyhow!(
+                "The transaction fee is less than the minimum for the type: {}",
+                self.type_id()
+            ))
+        } else {
+            Ok(())
+        }
     }
 }
 

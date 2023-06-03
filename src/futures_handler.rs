@@ -39,38 +39,36 @@ pub async fn mining_handler(
 ) -> Result<()> {
     let mut state = state.write().await;
 
-    match result {
-        Ok(block) => {
-            log::info!(
-                "New block mined: {}, Reward: {}",
-                block.header.height,
-                block.header.reward
-            );
-            log::trace!(
-                "Mined block: {}, n_bits: {}, nonce: {}",
-                block.header.height,
-                block.header.n_bits,
-                block.header.nonce,
-            );
+    if let Ok(block) = result {
+        log::info!(
+            "New block mined: {}, Reward: {}",
+            block.header.height,
+            block.header.reward
+        );
+        log::trace!(
+            "Mined block: {}, n_bits: {}, nonce: {}",
+            block.header.height,
+            block.header.n_bits,
+            block.header.nonce,
+        );
 
-            if let Err(error) = state.put_block(&block) {
-                log::warn!("Put block failed: {error:?}");
-            }
-
-            let block_bytes = bincode::serialize(&block)
-                .map_err(|error| anyhow!("Failed to serialize block: {error:?}"))?;
-
-            if let Err(error) = swarm
-                .behaviour_mut()
-                .gossipsub
-                .publish(gossipsub::IdentTopic::new(BLOCK_TOPIC), block_bytes)
-            {
-                log::warn!("Gossipsub publish failed: {error:?}");
-            }
+        if let Err(error) = state.put_block(&block) {
+            log::warn!("Put block failed: {error:?}");
         }
-        // Err(error) => log::trace!("Mining failed: {error:?}"), // TODO
-        Err(_) => {}
+
+        let block_bytes = bincode::serialize(&block)
+            .map_err(|error| anyhow!("Failed to serialize block: {error:?}"))?;
+
+        if let Err(error) = swarm
+            .behaviour_mut()
+            .gossipsub
+            .publish(gossipsub::IdentTopic::new(BLOCK_TOPIC), block_bytes)
+        {
+            log::warn!("Gossipsub publish failed: {error:?}");
+        }
     }
+
+    // TODO: Processing block mining error
 
     Ok(())
 }
@@ -155,13 +153,16 @@ pub async fn sync_response(
         for block in blocks {
             log::info!("New block received: {}", block.header.height);
 
-            if let Ok(()) = state.block_validation(&block) {
+            if let Ok(()) = block.is_valid(&state) {
                 if let Err(error) = state.put_block(&block) {
                     log::warn!("Put block failed: {error:?}");
                 }
             } else {
                 swarm.ban_peer_id(peer);
-                log::warn!("Peer is banned for providing invalid block: {}", peer.to_base58())
+                log::warn!(
+                    "Peer is banned for providing invalid block: {}",
+                    peer.to_base58()
+                )
             }
         }
 
@@ -189,15 +190,18 @@ pub async fn gossipsub_handler(
 
                 log::info!("New block received: {}", block.header.height);
 
-                if let Ok(()) = state.block_validation(&block) {
+                if let Ok(()) = block.is_valid(&state) {
                     if let Err(error) = state.put_block(&block) {
                         log::warn!("Put block failed: {error:?}");
                     }
+                } else if let Some(peer_id) = message.source {
+                    swarm.ban_peer_id(peer_id);
+                    log::warn!(
+                        "Peer is banned for providing invalid block: {}",
+                        peer_id.to_base58()
+                    )
                 } else {
-                    if let Some(peer_id) = message.source {
-                        swarm.ban_peer_id(peer_id);
-                        log::warn!("Peer is banned for providing invalid block: {}", peer_id.to_base58())
-                    }
+                    log::warn!("The block is invalid and could not get peer");
                 }
             }
             TRANSACTION_TOPIC => {
@@ -209,15 +213,18 @@ pub async fn gossipsub_handler(
                     transaction.hash()?.to_base58()
                 );
 
-                if let Ok(()) = state.transaction_validation(&transaction) {
+                if let Ok(()) = transaction.is_valid(&state) {
                     if let Err(error) = state.put_transaction_mempool(transaction) {
                         log::warn!("Put transaction failed: {error:?}");
                     }
+                } else if let Some(peer_id) = message.source {
+                    swarm.ban_peer_id(peer_id);
+                    log::warn!(
+                        "Peer is banned for providing invalid transaction: {}",
+                        peer_id.to_base58()
+                    )
                 } else {
-                    if let Some(peer_id) = message.source {
-                        swarm.ban_peer_id(peer_id);
-                        log::warn!("Peer is banned for providing invalid transaction: {}", peer_id.to_base58())
-                    }
+                    log::warn!("The transaction is invalid and could not get peer");
                 }
             }
             _ => {}
