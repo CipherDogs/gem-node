@@ -5,7 +5,7 @@ pub trait Validation {
     fn is_valid(&self, state: &State) -> Result<()>;
 
     fn reward_is_valid(&self, _reward: u64) -> bool {
-        true // TODO
+        true // TODO: Validation the block reward
     }
 
     fn minimum_fee(&self, data: &Data) -> u64 {
